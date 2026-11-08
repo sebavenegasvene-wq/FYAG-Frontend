@@ -1,5 +1,5 @@
-import PanelRoles from "./PanelRoles";
+import ObrasPage from "./obras/ObrasPage";
 
 export default function SupervisorPage() {
-  return <PanelRoles kind="supervisor" />;
+  return <ObrasPage />;
 }
