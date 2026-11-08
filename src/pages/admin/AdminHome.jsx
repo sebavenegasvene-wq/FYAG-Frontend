@@ -1,56 +1,25 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getUsuarios } from "../../api/usuarios";
-import { getObras } from "../../api/obras";
 import AdminLayout from "./AdminLayout";
 
-const total = (pagina) => pagina?.page?.totalElements ?? pagina?.content?.length ?? 0;
+const MODULOS = [
+  { to: "/admin/dashboard", icono: "📊", titulo: "Dashboard", texto: "Ventas del mes, presupuestos, obras en proceso y cuentas por cobrar, más el resumen operativo.", color: "info" },
+  { to: "/admin/obras", icono: "🏗️", titulo: "Obras", texto: "Revisa el estado, el técnico y las fechas de cada obra (solo lectura, sin montos).", color: "warn" },
+  { to: "/admin/usuarios", icono: "👥", titulo: "Usuarios", texto: "Crea cuentas, asigna perfiles, desactiva empleados, resetea claves y desbloquea accesos.", color: "ok" },
+  { to: "/cambiar-password", icono: "🔑", titulo: "Mi contraseña", texto: "Actualiza la contraseña de tu propia cuenta.", color: "bad" },
+];
 
 export default function AdminHome() {
-  const [stats, setStats] = useState(null);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    let activo = true;
-    Promise.all([
-      getUsuarios({ size: 1 }),
-      getUsuarios({ activo: true, size: 1 }),
-      getUsuarios({ activo: false, size: 1 }),
-      getObras({ estado: "EN_PROCESO", size: 1 }),
-    ])
-      .then(([todos, activos, inactivos, obras]) => {
-        if (activo) setStats({ todos: total(todos), activos: total(activos), inactivos: total(inactivos), obras: total(obras) });
-      })
-      .catch(() => activo && setError("No se pudieron cargar los indicadores."));
-    return () => { activo = false; };
-  }, []);
-
-  const valor = (n) => (stats ? n : "—");
-
   return (
-    <AdminLayout title="Panel de Administración" subtitle="Gestión de cuentas, perfiles y acceso. Sin acceso a información financiera.">
-      {error && <div className="adm-alert" role="alert">{error}</div>}
-
-      <section className="adm-stats" aria-label="Resumen">
-        <article className="adm-card adm-stat"><span>USUARIOS REGISTRADOS</span><strong>{valor(stats?.todos)}</strong><small>Total de cuentas</small></article>
-        <article className="adm-card adm-stat"><span>CUENTAS ACTIVAS</span><strong>{valor(stats?.activos)}</strong><small>Pueden iniciar sesión</small></article>
-        <article className="adm-card adm-stat"><span>CUENTAS DESACTIVADAS</span><strong>{valor(stats?.inactivos)}</strong><small>Historial conservado</small></article>
-        <article className="adm-card adm-stat"><span>OBRAS EN PROCESO</span><strong>{valor(stats?.obras)}</strong><small>Solo lectura</small></article>
-      </section>
-
+    <AdminLayout title="Panel de Administración" subtitle="Elige un módulo para comenzar.">
       <section className="adm-modules" aria-label="Módulos">
-        <Link to="/admin/usuarios" className="adm-module">
-          <strong>▤ Gestión de usuarios</strong>
-          <small>Crear cuentas con clave temporal, asignar perfiles, desactivar empleados, resetear claves y desbloquear cuentas.</small>
-        </Link>
-        <Link to="/admin/obras" className="adm-module">
-          <strong>▦ Obras (solo lectura)</strong>
-          <small>Consulta el estado de las obras para dar soporte. No muestra montos ni permite editar.</small>
-        </Link>
-        <Link to="/cambiar-password" className="adm-module">
-          <strong>⚿ Mi contraseña</strong>
-          <small>Actualiza la contraseña de tu propia cuenta.</small>
-        </Link>
+        {MODULOS.map((m) => (
+          <Link key={m.to} to={m.to} className={`adm-module ${m.color}`}>
+            <span className="adm-module-icon" aria-hidden="true">{m.icono}</span>
+            <strong>{m.titulo}</strong>
+            <small>{m.texto}</small>
+            <span className="adm-module-go">Abrir →</span>
+          </Link>
+        ))}
       </section>
     </AdminLayout>
   );
