@@ -4,7 +4,6 @@ import { guardarPerfil, homeFor, logout } from "./api/auth";
 import { getPerfil } from "./api/usuarios";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
-import AdminHome from "./pages/admin/AdminHome";
 import AdminObrasPage from "./pages/admin/AdminObrasPage";
 import UsuariosPage from "./pages/admin/UsuariosPage";
 import CambiarPasswordPage from "./pages/CambiarPasswordPage";
@@ -13,6 +12,8 @@ import CobranzasPage from "./pages/finanzas/CobranzasPage";
 import FinanzasPage from "./pages/FinanzasPage";
 import GerenciaPage from "./pages/GerenciaPage";
 import LoginPage from "./pages/LoginPage";
+import InicioPage from "./pages/InicioPage";
+import PerfilPage from "./pages/PerfilPage";
 import ObrasPage from "./pages/obras/ObrasPage";
 import PresupuestosPage from "./pages/finanzas/PresupuestosPage";
 import ReportesPage from "./pages/finanzas/ReportesPage";
@@ -60,9 +61,11 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/cambiar-password" element={<CambiarPasswordPage />} />
+        <Route path="/inicio" element={<ProtectedRoute><InicioPage /></ProtectedRoute>} />
+        <Route path="/perfil" element={<ProtectedRoute><PerfilPage /></ProtectedRoute>} />
 
         {/* Administrador */}
-        <Route path="/admin" element={<ProtectedRoute roles={ADMIN}><AdminHome /></ProtectedRoute>} />
+        <Route path="/admin" element={<Navigate to="/inicio" replace />} />
         <Route path="/admin/dashboard" element={<ProtectedRoute roles={ADMIN}><AdminDashboardPage /></ProtectedRoute>} />
         <Route path="/admin/obras" element={<ProtectedRoute roles={ADMIN}><AdminObrasPage /></ProtectedRoute>} />
         <Route path="/admin/usuarios" element={<ProtectedRoute roles={ADMIN}><UsuariosPage /></ProtectedRoute>} />

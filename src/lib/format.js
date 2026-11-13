@@ -27,3 +27,13 @@ export const humanizar = (clave) => {
   const t = String(clave).replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim().toLowerCase();
   return t.charAt(0).toUpperCase() + t.slice(1);
 };
+
+// Rango de un mes calendario (offset 0 = mes actual hasta hoy, -1 = mes anterior completo) en formato yyyy-mm-dd
+const pad = (n) => String(n).padStart(2, "0");
+const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+export const rangoMes = (offset = 0) => {
+  const h = new Date();
+  const ini = new Date(h.getFullYear(), h.getMonth() + offset, 1);
+  const fin = offset === 0 ? h : new Date(h.getFullYear(), h.getMonth() + offset + 1, 0);
+  return { desde: iso(ini), hasta: iso(fin), mes: ini.toLocaleDateString("es-CL", { month: "long", year: "numeric" }) };
+};
