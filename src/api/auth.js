@@ -2,11 +2,11 @@ import client from "./client";
 import { getPerfil } from "./usuarios";
 
 export const ROLE_HOME = {
-  ADMIN: "/admin",
-  GERENCIA: "/gerencia",
-  FINANZAS: "/finanzas",
-  SUPERVISOR: "/supervisor",
-  TECNICO: "/tecnico",
+  ADMIN: "/inicio",
+  GERENCIA: "/inicio",
+  FINANZAS: "/inicio",
+  SUPERVISOR: "/inicio",
+  TECNICO: "/inicio",
 };
 
 export const homeFor = (role) => ROLE_HOME[role] ?? "/login";

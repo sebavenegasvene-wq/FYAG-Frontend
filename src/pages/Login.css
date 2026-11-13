@@ -6,7 +6,7 @@
   place-items: center;
   padding: 32px 20px;
   background: var(--bg);
-  color: #f7f7f7;
+  color: var(--text);
   font-family: Arial, Helvetica, sans-serif;
 }
 @keyframes auth-fade-up {
@@ -38,18 +38,18 @@
   min-height: 22px !important;
   margin: 0 !important;
   padding: 0;
-  border: 1px solid #777 !important;
+  border: 1px solid var(--line-2) !important;
   border-radius: 50% !important;
   background: var(--surface) !important;
-  color: #eee !important;
+  color: var(--text) !important;
   font: 700 13px/1 Arial, sans-serif !important;
   cursor: pointer;
 }
 .fyag-help-button:hover,
 .fyag-help-button:focus-visible {
-  border-color: #fff !important;
-  background: #444 !important;
-  outline: 2px solid rgba(255, 255, 255, .2);
+  border-color: var(--accent) !important;
+  background: var(--surface-2) !important;
+  outline: 2px solid var(--accent);
 }
 .fyag-help-popover {
   position: absolute;
@@ -58,10 +58,10 @@
   right: 8px;
   width: min(300px, calc(100% - 26px));
   padding: 12px 14px;
-  border: 1px solid #666;
+  border: 1px solid var(--line-2);
   border-radius: 8px;
-  background: #202020;
-  color: #f1f1f1;
+  background: var(--surface-2);
+  color: var(--text);
   box-shadow: 0 12px 28px rgba(0, 0, 0, .4);
   font-size: 12px;
   line-height: 1.5;
@@ -72,27 +72,27 @@
   padding: 5px 13px;
   border-radius: 4px;
   background: var(--accent);
-  color: var(--bg);
+  color: var(--accent-ink);
   font-size: 12px;
   font-weight: 800;
 }
 .fyag-login-card h1 {
   margin: 0;
-  color: #fff;
+  color: var(--text);
   text-align: center;
   font-size: clamp(22px, 5vw, 26px);
   font-weight: 800;
 }
 .fyag-login-subtitle {
   margin: 7px 0 32px;
-  color: #eee;
+  color: var(--muted);
   text-align: center;
   font-size: 12px;
 }
 .fyag-login-label {
   display: block;
   margin: 0 0 8px;
-  color: #f1f1f1;
+  color: var(--text);
   font-size: 12px;
   font-weight: 700;
 }
@@ -102,17 +102,17 @@
   min-height: 43px;
   margin: 0 0 22px;
   padding: 0 13px;
-  border: 1px solid #555;
+  border: 1px solid var(--line-2);
   border-radius: 8px;
   outline: none;
-  background: var(--bg);
-  color: #fff;
+  background: var(--bg-in);
+  color: var(--text);
   font: inherit;
   font-size: 13px;
 }
 .fyag-login-card input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, .08);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 .fyag-login-card input::placeholder { color: var(--muted); }
 .fyag-login-card form > button[type="submit"] {
@@ -122,7 +122,7 @@
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: var(--bg);
+  color: var(--accent-ink);
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
@@ -132,10 +132,10 @@
 .fyag-login-error {
   margin: 0 0 14px;
   padding: 10px 12px;
-  border: 1px solid #b94a4a;
+  border: 1px solid var(--bad-line);
   border-radius: 7px;
-  background: #481f1f;
-  color: #ffdada;
+  background: var(--bad-bg);
+  color: var(--bad);
   font-size: 13px;
 }
 @media (max-width: 480px) {
