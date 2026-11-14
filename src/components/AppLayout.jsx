@@ -4,6 +4,8 @@ import { getRole, homeFor, logout } from "../api/auth";
 import { useInactividad } from "../hooks/useInactividad";
 import { NAV, ROLE_LABEL } from "../lib/roles";
 import HelpButton from "./HelpButton";
+import NotificationBell from "./NotificationBell";
+import ThemeControls from "./ThemeControls";
 
 // Estructura común a todos los perfiles: menú filtrado por rol, usuario, cierre de sesión y ayuda.
 export default function AppLayout({ title, subtitle, actions, children }) {
@@ -18,7 +20,7 @@ export default function AppLayout({ title, subtitle, actions, children }) {
 
   useInactividad(cerrarSesion, 30);
 
-  const enlaces = [...(NAV[role] ?? []), { to: "/cambiar-password", label: "Mi contraseña" }];
+  const enlaces = [...(NAV[role] ?? []), { to: "/perfil", label: "Mi perfil" }];
 
   return (
     <main className="adm-page">
@@ -32,6 +34,8 @@ export default function AppLayout({ title, subtitle, actions, children }) {
           </nav>
           <div className="adm-user">
             <div className="adm-user-info"><strong>{username}</strong><small>{ROLE_LABEL[role] ?? role}</small></div>
+            <NotificationBell usuario={username} rol={role} />
+            <ThemeControls />
             <button className="adm-btn adm-btn-sm adm-logout" onClick={cerrarSesion}>Cerrar sesión</button>
           </div>
         </header>

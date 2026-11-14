@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { login } from "../api/auth";
 import { useForm } from "../hooks/useForm";
 import "./Login.css";
+import ThemeControls from "../components/ThemeControls";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -56,6 +57,7 @@ export default function LoginPage() {
 
   return (
     <main className="fyag-login">
+      <div className="fyag-login-theme"><ThemeControls /></div>
       <section className="fyag-login-card" aria-labelledby="fyag-login-title">
         <button
           type="button"

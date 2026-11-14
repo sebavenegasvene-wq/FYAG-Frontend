@@ -3,6 +3,8 @@ import client from "./client";
 export const getUsuarios = (params) => client.get("/usuarios", { params }).then((r) => r.data); // ?role=&activo=
 export const getTecnicos = () => client.get("/usuarios/tecnicos").then((r) => r.data);
 export const getPerfil = () => client.get("/usuarios/me").then((r) => r.data);
+// Endpoint supuesto: ajusta la ruta/método si tu backend usa otro (ver README)
+export const actualizarPerfil = (data) => client.put("/usuarios/me", data).then((r) => r.data);
 export const cambiarPassword = (data) => client.patch("/usuarios/me/password", data);
 export const getUsuario = (username) => client.get(`/usuarios/${username}`).then((r) => r.data);
 export const createUsuario = (data) => client.post("/usuarios", data).then((r) => r.data);

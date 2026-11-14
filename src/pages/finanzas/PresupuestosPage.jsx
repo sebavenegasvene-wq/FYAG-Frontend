@@ -55,7 +55,7 @@ export default function PresupuestosPage() {
   const esFinanzas = rol === "FINANZAS";
   const [pagina, setPagina] = useState(0);
   const [data, setData] = useState(paginaVacia);
-  const [estado, setEstado] = useState(rol === "GERENCIA" ? "PENDIENTE" : "");
+  const [estado, setEstado] = useState("");
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [verId, setVerId] = useState(null);
