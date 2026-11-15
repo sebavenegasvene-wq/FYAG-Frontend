@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { cambiarPassword, getPerfil } from "../api/usuarios";
 import { guardarPerfil, homeFor, logout } from "../api/auth";
 import { useForm } from "../hooks/useForm";
-import "./admin/admin.css";
 
 export default function CambiarPasswordPage() {
   const navigate = useNavigate();

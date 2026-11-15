@@ -1,5 +1,5 @@
-import PanelRoles from "./PanelRoles";
+import DashboardPage from "./finanzas/DashboardPage";
 
 export default function GerenciaPage() {
-  return <PanelRoles kind="management" />;
+  return <DashboardPage />;
 }
