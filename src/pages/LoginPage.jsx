@@ -10,6 +10,7 @@ const CUENTAS_RAPIDAS = [
   { rol: "Supervisor", nombre: "Marcelo Fuentes", username: "supervisor", password: "supervisor" },
   { rol: "Técnico 1", nombre: "Diego Araya", username: "tecnico1", password: "tecnico1" },
   { rol: "Técnico 2", nombre: "Javier Mella", username: "tecnico2", password: "tecnico2" },
+  { rol: "Administrador", nombre: "Admin del sistema", username: "admin", password: "admin" },
 ];
 
 export default function LoginPage() {
@@ -80,7 +81,7 @@ export default function LoginPage() {
       // Contraseña temporal: debe cambiarla antes de entrar (HU-21)
       navigate(perfil.debeCambiarPassword ? "/cambiar-password" : "/dashboard", { replace: true });
     } catch (error) {
-      if (error.response?.status === 429) setServerError("Demasiados intentos. Espera 1 minuto.");
+      if (error.response?.status === 429) setServerError("Demasiados intentos. Espera 15 minutos.");
       else if (error.response?.status === 401) setServerError("Usuario o contraseña incorrectos, o cuenta desactivada/bloqueada.");
       else setServerError("Error al conectar con el servidor. Intenta de nuevo.");
     } finally {

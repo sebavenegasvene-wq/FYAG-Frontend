@@ -34,7 +34,7 @@ export default function CostosForm({ obraId, ocultarValorHora, onGuardado, onCan
     try {
       const payload = { materiales: Number(form.materiales), horasTecnicas: Number(form.horasTecnicas) };
       if (form.valorHora !== "") payload.valorHora = Number(form.valorHora);
-      else if (!ocultarValorHora) payload.valorHora = 0;
+      else if (!ocultarValorHora) payload.valorHora = Number(form.valorHora);
       await registrarCostos(obraId, payload);
       onGuardado?.();
     } catch (err) { setError(mensajeError(err)); }

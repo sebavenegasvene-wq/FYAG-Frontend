@@ -48,7 +48,7 @@ export default function CambiarPasswordPage() {
   return (
     <main className="adm-page" style={{ display: "grid", placeItems: "center" }}>
       <form className="adm-card" style={{ width: "min(440px, 100%)" }} onSubmit={enviar} noValidate>
-        <h1 style={{ margin: "0 0 6px", fontSize: 20 }}>{obligatorio ? "Debes cambiar tu contraseña" : "Cambiar mi contraseña"}</h1>
+        <h1 style={{ margin: "0 0 6px", fontSize: "calc(20px * var(--fs, 1))" }}>{obligatorio ? "Debes cambiar tu contraseña" : "Cambiar mi contraseña"}</h1>
         <p className="adm-sub">
           {obligatorio
             ? "Tu cuenta usa una contraseña temporal. Define una nueva para continuar."

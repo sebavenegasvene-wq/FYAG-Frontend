@@ -7,3 +7,4 @@ export const registrarPago = (id, data) => client.patch(`/facturas/${id}/pago`, 
 export const anularPago = (id, data) => client.patch(`/facturas/${id}/anular-pago`, data).then((r) => r.data);
 export const getClientesPendientes = (params) =>
   client.get("/facturas/clientes-pendientes", { params }).then((r) => r.data);
+export const getObrasFacturables = () => client.get("/facturas/obras-facturables").then((r) => r.data);

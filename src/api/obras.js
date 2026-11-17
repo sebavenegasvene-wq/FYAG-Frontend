@@ -8,3 +8,6 @@ export const cambiarEstadoObra = (id, data) => client.patch(`/obras/${id}/estado
 export const getCostos = (obraId) => client.get(`/obras/${obraId}/costos`).then((r) => r.data);
 export const registrarCostos = (obraId, data) => client.put(`/obras/${obraId}/costos`, data).then((r) => r.data);
 export const getRentabilidad = (obraId) => client.get(`/obras/${obraId}/rentabilidad`).then((r) => r.data);
+
+// Asigna o cambia el técnico responsable de la obra (HU-07)
+export const asignarTecnicoObra = (id, tecnicoId) => client.patch(`/obras/${id}/tecnico`, { tecnicoId }).then((r) => r.data);

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { getDashboard } from "../../api/dashboard";
 import { getObras } from "../../api/obras";
 import { getUsuarios } from "../../api/usuarios";
 import AdminLayout from "./AdminLayout";
@@ -7,19 +6,20 @@ import { clp } from "./formato";
 
 const total = (pagina) => pagina?.page?.totalElements ?? pagina?.content?.length ?? 0;
 
-function Kpi({ titulo, valor, detalle, tono, bloqueado }) {
+function Kpi({ titulo, valor, detalle, tono }) {
   return (
-    <article className={`adm-card adm-kpi ${bloqueado ? "locked" : tono}`}>
+    <article className={`adm-card adm-kpi ${tono}`}>
       <span>{titulo}</span>
-      <strong>{bloqueado ? "🔒 Sin acceso" : valor}</strong>
-      <small>{bloqueado ? "El servidor aún no autoriza este dato al Administrador" : detalle}</small>
+      <strong>{valor}</strong>
+      <small>{detalle}</small>
     </article>
   );
 }
 
 export default function AdminDashboardPage() {
-  const [fin, setFin] = useState(null);          // datos de /dashboard (financieros)
-  const [sinAcceso, setSinAcceso] = useState(false);
+  // El Admin no tiene acceso a cifras financieras: no se llama a /dashboard.
+  const fin = null;
+  const sinAcceso = true;
   const [op, setOp] = useState(null);            // datos operativos
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -27,18 +27,8 @@ export default function AdminDashboardPage() {
   const cargar = useCallback(async () => {
     setCargando(true);
     setError(null);
-    setSinAcceso(false);
 
-    // 1) Financieros: pueden dar 403 para el ADMIN
-    try {
-      setFin(await getDashboard());
-    } catch (e) {
-      setFin(null);
-      if (e.response?.status === 403) setSinAcceso(true);
-      else setError("No se pudieron cargar los indicadores del dashboard.");
-    }
-
-    // 2) Operativos: el ADMIN sí tiene acceso
+    // Operativos
     try {
       const [enProceso, finalizadas, suspendidas, canceladas, activos, tecnicos] = await Promise.all([
         getObras({ estado: "EN_PROCESO", size: 1 }),
@@ -68,19 +58,13 @@ export default function AdminDashboardPage() {
   return (
     <AdminLayout title="Dashboard" subtitle="Indicadores del negocio, actualizados al cargar la vista.">
       {error && <div className="adm-alert" role="alert">{error}</div>}
-      {sinAcceso && !cargando && (
-        <div className="adm-notice" role="status">
-          Las cifras de ventas, presupuestos y cuentas por cobrar requieren que el servidor autorice al
-          perfil Administrador en <code>/dashboard</code>. Cuando lo autorice, aparecerán aquí automáticamente.
-        </div>
-      )}
 
       <section className="adm-kpis" aria-label="Indicadores principales">
-        <Kpi titulo="VENTAS DEL MES" tono="ok" bloqueado={sinAcceso} valor={v(clp(fin?.ventasDelMes))} detalle="Facturas pagadas en el mes" />
-        <Kpi titulo="PRESUPUESTOS APROBADOS" tono="ok" bloqueado={sinAcceso} valor={v(fin?.presupuestosAprobados)} detalle="Habilitan la creación de obras" />
-        <Kpi titulo="PRESUPUESTOS PENDIENTES" tono="bad" bloqueado={sinAcceso} valor={v(fin?.presupuestosPendientes)} detalle="Esperando aprobación" />
+        {!sinAcceso && <Kpi titulo="VENTAS DEL MES" tono="ok" valor={v(clp(fin?.ventasDelMes))} detalle="Facturas pagadas en el mes" />}
+        {!sinAcceso && <Kpi titulo="PRESUPUESTOS APROBADOS" tono="ok" valor={v(fin?.presupuestosAprobados)} detalle="Habilitan la creación de obras" />}
+        {!sinAcceso && <Kpi titulo="PRESUPUESTOS PENDIENTES" tono="bad" valor={v(fin?.presupuestosPendientes)} detalle="Esperando aprobación" />}
         <Kpi titulo="OBRAS EN PROCESO" tono="info" valor={v(obrasEnProceso)} detalle="En ejecución actualmente" />
-        <Kpi titulo="CUENTAS POR COBRAR" tono="bad" bloqueado={sinAcceso} valor={v(clp(fin?.cuentasPorCobrar))} detalle="Facturas pendientes de pago" />
+        {!sinAcceso && <Kpi titulo="CUENTAS POR COBRAR" tono="bad" valor={v(clp(fin?.cuentasPorCobrar))} detalle="Facturas pendientes de pago" />}
       </section>
 
       <h2 className="adm-section">Resumen operativo</h2>

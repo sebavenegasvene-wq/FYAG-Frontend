@@ -20,7 +20,7 @@ import ReportesPage from "./pages/finanzas/ReportesPage";
 import SupervisorPage from "./pages/SupervisorPage";
 import TecnicoPage from "./pages/TecnicoPage";
 import TiposServicioPage from "./pages/TiposServicioPage";
-
+import AuditoriaPage from "./pages/AuditoriaPage";
 // /dashboard manda a cada usuario a su panel según su rol
 function RoleRedirect() {
   const navigate = useNavigate();
@@ -54,6 +54,7 @@ function RoleRedirect() {
 const ADMIN = ["ADMIN"];
 const FIN_GER = ["FINANZAS", "GERENCIA"];
 const OBRAS_CONSULTA = ["FINANZAS", "GERENCIA"];
+const ADMIN_GER = ["ADMIN", "GERENCIA"];
 
 export default function App() {
   return (
@@ -83,6 +84,8 @@ export default function App() {
         <Route path="/supervisor" element={<ProtectedRoute roles={["SUPERVISOR"]}><SupervisorPage /></ProtectedRoute>} />
         <Route path="/tipos-servicio" element={<ProtectedRoute roles={["SUPERVISOR"]}><TiposServicioPage /></ProtectedRoute>} />
         <Route path="/tecnico" element={<ProtectedRoute roles={["TECNICO"]}><TecnicoPage /></ProtectedRoute>} />
+
+        <Route path="/auditoria" element={<ProtectedRoute roles={ADMIN_GER}><AuditoriaPage /></ProtectedRoute>} />
 
         <Route path="/dashboard" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

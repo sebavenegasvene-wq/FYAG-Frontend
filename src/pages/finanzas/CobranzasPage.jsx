@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { anularPago, emitirFactura, getClientesPendientes, getFacturas, registrarPago } from "../../api/facturas";
-import { getObras } from "../../api/obras";
+import { anularPago, emitirFactura, getClientesPendientes, getFacturas, getObrasFacturables, registrarPago } from "../../api/facturas";
 import { getRole } from "../../api/auth";
 import AppLayout from "../../components/AppLayout";
 import { Alert, ConfirmModal, DataTable, EstadoPill, Field, Modal, Pager, Pill, Toast } from "../../components/ui";
@@ -16,7 +15,7 @@ const nombreObra = (f) => pick(f, "obraNombre") ?? f.obra?.nombre ?? `Obra #${f.
 const nombreCliente = (f) => pick(f, "clienteRazonSocial", "razonSocial", "clienteNombre") ?? f.cliente?.razonSocial ?? "—";
 
 function EmitirModal({ onClose, onEmitida }) {
-  const { form, errors, setErrors, handleChange, fillForm } = useForm({ obraId: "", numeroFactura: "", fechaEmision: hoy(), fechaVencimiento: "", monto: "" });
+  const { form, errors, setErrors, handleChange, fillForm } = useForm({ obraId: "", fechaEmision: hoy(), fechaVencimiento: "", monto: "" });
   const [obras, setObras] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -24,48 +23,58 @@ function EmitirModal({ onClose, onEmitida }) {
 
   useEffect(() => {
     let a = true;
-    getObras({ estado: "FINALIZADA", size: 100 }).then((r) => a && setObras(lista(r))).catch((e) => a && setErrorServidor(mensajeError(e))).finally(() => a && setCargando(false));
+    getObrasFacturables().then((r) => a && setObras(lista(r))).catch((e) => a && setErrorServidor(mensajeError(e))).finally(() => a && setCargando(false));
     return () => { a = false; };
   }, []);
+
+  const obraSel = obras.find((o) => String(o.obraId) === String(form.obraId));
+
+  // Al elegir la obra, el monto se completa con el saldo por facturar
+  const elegirObra = (ev) => {
+    const o = obras.find((x) => String(x.obraId) === ev.target.value);
+    fillForm({ obraId: ev.target.value, monto: o ? String(o.saldoPorFacturar) : "" });
+  };
 
   const enviar = async (ev) => {
     ev.preventDefault();
     const e = {};
     if (!form.obraId) e.obraId = "Elige una obra finalizada";
-    if (!form.numeroFactura.trim()) e.numeroFactura = "Ingresa el número de factura";
     if (!form.fechaEmision) e.fechaEmision = "Indica la fecha de emisión";
     if (!form.fechaVencimiento) e.fechaVencimiento = "Indica la fecha de vencimiento";
     else if (form.fechaVencimiento < form.fechaEmision) e.fechaVencimiento = "No puede ser anterior a la emisión";
     if (!(Number(form.monto) > 0)) e.monto = "Ingresa un monto mayor a 0";
+    else if (obraSel && Number(form.monto) > Number(obraSel.saldoPorFacturar)) e.monto = `No puede superar el saldo (${clp(obraSel.saldoPorFacturar)})`;
     if (Object.keys(e).length) return setErrors(e);
     setGuardando(true); setErrorServidor(null);
     try {
-      await emitirFactura({ obraId: Number(form.obraId), numeroFactura: form.numeroFactura.trim(), fechaEmision: form.fechaEmision, fechaVencimiento: form.fechaVencimiento, monto: Number(form.monto) });
-      onEmitida();
+      const creada = await emitirFactura({ obraId: Number(form.obraId), fechaEmision: form.fechaEmision, fechaVencimiento: form.fechaVencimiento, monto: Number(form.monto) });
+      onEmitida(creada);
     } catch (err) { setErrors(erroresPorCampo(err)); setErrorServidor(mensajeError(err)); }
     finally { setGuardando(false); }
   };
 
-  const f = (name, label, tipo = "text", extra = {}) => (
-    <Field label={label} name={name} error={errors[name]} hint={extra.hint}>
-      <input id={`f-${name}`} name={name} type={tipo} className={`adm-input${errors[name] ? " error" : ""}`} value={form[name]} onChange={handleChange} autoComplete="off" {...extra.attrs} />
-    </Field>
-  );
-
   return (
-    <Modal titulo="Emitir factura" descripcion="Solo se factura sobre obras finalizadas. La factura queda en estado Pendiente de pago." onClose={onClose} onSubmit={enviar} bloquear={guardando}>
+    <Modal titulo="Emitir factura" descripcion="Solo se factura sobre obras finalizadas con saldo pendiente. El N° de factura se asigna automáticamente y queda en estado Pendiente." onClose={onClose} onSubmit={enviar} bloquear={guardando}>
       <Alert>{errorServidor}</Alert>
-      {!cargando && obras.length === 0 && <div className="adm-notice">No hay obras finalizadas disponibles para facturar.</div>}
+      {!cargando && obras.length === 0 && <div className="adm-notice">No hay obras finalizadas con saldo por facturar.</div>}
       <div className="adm-form-grid">
         <Field label="Obra finalizada" name="obraId" error={errors.obraId} wide>
-          <select id="f-obraId" name="obraId" className={`adm-select${errors.obraId ? " error" : ""}`} value={form.obraId} onChange={handleChange} disabled={cargando}>
+          <select id="f-obraId" name="obraId" className={`adm-select${errors.obraId ? " error" : ""}`} value={form.obraId} onChange={elegirObra} disabled={cargando}>
             <option value="">{cargando ? "Cargando..." : "Selecciona una obra"}</option>
-            {obras.map((o) => <option key={o.id} value={o.id}>{o.nombre} · {o.clienteRazonSocial}</option>)}
+            {obras.map((o) => <option key={o.obraId} value={o.obraId}>{o.obraNombre} · {o.clienteRazonSocial}</option>)}
           </select>
         </Field>
-        {f("numeroFactura", "N° de factura")}
-        {f("monto", "Monto ($ CLP)", "number", { attrs: { min: 0, step: 1, inputMode: "numeric" } })}
-        {f("fechaEmision", "Fecha de emisión", "date")}
+        {obraSel && (
+          <div className="adm-notice" style={{ gridColumn: "1 / -1" }}>
+            Presupuesto {clp(obraSel.montoPresupuesto)} · Ya facturado {clp(obraSel.totalFacturado)} · <strong>Saldo por facturar {clp(obraSel.saldoPorFacturar)}</strong>
+          </div>
+        )}
+        <Field label="Monto ($ CLP)" name="monto" error={errors.monto}>
+          <input id="f-monto" name="monto" type="number" min={0} max={obraSel?.saldoPorFacturar} step={1} inputMode="numeric" className={`adm-input${errors.monto ? " error" : ""}`} value={form.monto} onChange={handleChange} autoComplete="off" />
+        </Field>
+        <Field label="Fecha de emisión" name="fechaEmision" error={errors.fechaEmision}>
+          <input id="f-fechaEmision" name="fechaEmision" type="date" className={`adm-input${errors.fechaEmision ? " error" : ""}`} value={form.fechaEmision} onChange={handleChange} />
+        </Field>
         <Field label="Fecha de vencimiento" name="fechaVencimiento" error={errors.fechaVencimiento}>
           <div className="adm-row">
             <input id="f-fechaVencimiento" name="fechaVencimiento" type="date" className={`adm-input${errors.fechaVencimiento ? " error" : ""}`} value={form.fechaVencimiento} onChange={handleChange} />
@@ -177,8 +186,8 @@ function Facturas({ esFinanzas, mostrar }) {
       <Alert>{error}</Alert>
       <DataTable columnas={columnas} filas={lista(data)} cargando={cargando} vacio="No hay facturas con ese filtro." />
       <Pager data={data} pagina={pagina} setPagina={setPagina} unidad="factura(s)" />
+      {pago && <PagoModal factura={pago} onClose={() => setPago(null)} onGuardado={(msg) => { setPago(null); mostrar(msg); cargar(); }} />}
       {emitir && <EmitirModal onClose={() => setEmitir(false)} onEmitida={() => { setEmitir(false); mostrar("Factura emitida en estado Pendiente."); cargar(); }} />}
-      {pago && <PagoModal factura={pago} onClose={() => setPago(null)} onGuardado={(m) => { setPago(null); mostrar(m); cargar(); }} />}
       {anular && (
         <ConfirmModal titulo={`Anular pago · factura ${anular.numeroFactura}`} texto="El pago no se elimina: queda marcado como anulado con tu usuario, la fecha y el motivo, y la factura vuelve a Pendiente."
           confirmar="Anular pago" peligro cargando={procesando} error={errorAnular} onCancel={() => setAnular(null)} onConfirm={ejecutarAnulacion}>
