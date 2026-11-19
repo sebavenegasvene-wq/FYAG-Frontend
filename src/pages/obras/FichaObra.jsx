@@ -1,13 +1,17 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 // Un solo import desde api/obras (incluye la nueva función para asignar técnico)
 import { asignarTecnicoObra, cambiarEstadoObra, getRentabilidad } from "../../api/obras";
+import { getSeguimientoObra } from "../../api/seguimiento";
 import { getTecnicos } from "../../api/usuarios";
 import CostosForm from "../../components/CostosForm";
+import Seguimiento from "../../components/Seguimiento";
 import { Alert, ConfirmModal, EstadoPill, Kpi, Modal } from "../../components/ui";
 import { lista } from "../../lib/datos";
 import { mensajeError } from "../../lib/errores";
 import { clp, fecha, humanizar } from "../../lib/format";
 import { ESTADO_OBRA } from "../../lib/roles";
+import IncidenciasObra from "../../components/IncidenciasObra";
+import { ESTADOS_ABIERTOS } from "../../lib/incidencias";
 
 // Transiciones válidas según la máquina de estados (HU-09)
 const TRANSICIONES = { EN_PROCESO: ["FINALIZADA", "SUSPENDIDA", "CANCELADA"], SUSPENDIDA: ["EN_PROCESO", "CANCELADA"], FINALIZADA: [], CANCELADA: [] };
@@ -111,6 +115,7 @@ export default function FichaObra({ obra, rol, onClose, onCambio }) {
   const [error, setError] = useState(null);
   const [verCostos, setVerCostos] = useState(false);
   const [okCostos, setOkCostos] = useState(false);
+  const cargarSeguimiento = useCallback(() => getSeguimientoObra(obra.id), [obra.id]);
 
   const confirmar = async () => {
     if (pendiente === "SUSPENDIDA" && !motivo.trim()) return setError("El motivo de la suspensión es obligatorio.");
@@ -141,6 +146,10 @@ export default function FichaObra({ obra, rol, onClose, onCambio }) {
     <Modal titulo={obra.nombre} descripcion={`${obra.clienteRazonSocial ?? ""}`} onClose={onClose} ancho="wide">
       <p style={{ marginTop: -8 }}><EstadoPill mapa={ESTADO_OBRA} valor={obra.estado} /></p>
       {okCostos && <Alert tipo="ok">Costos guardados.</Alert>}
+      <h3 className="adm-section">Seguimiento</h3>
+      <Seguimiento cargar={cargarSeguimiento} />
+      <h3 className="adm-section">Novedades de terreno</h3>
+<IncidenciasObra obraId={obra.id} puedeRegistrar={esSupervisor && ESTADOS_ABIERTOS.includes(obra.estado)} />
       <div className="adm-detail">
         <div><h3>TIPO DE SERVICIO</h3><p>{obra.tipoServicioNombre ?? "—"}</p></div>
         <div><h3>TÉCNICO ASIGNADO</h3><p>{obra.tecnicoNombre ?? "Sin asignar"}</p></div>

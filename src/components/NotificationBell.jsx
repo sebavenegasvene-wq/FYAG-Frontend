@@ -13,18 +13,19 @@ const hace = (iso) => {
   return new Date(iso).toLocaleDateString("es-CL");
 };
 
-// Campana con contador de no leídas y panel con los avisos de obras.
-export default function NotificationBell({ usuario, rol }) {
-  const { items, noLeidas, marcarLeidas, marcarLeida, limpiar } = useNotificaciones(usuario, rol);
+// Campana con contador de no leídas y panel con los avisos (guardados en el servidor).
+export default function NotificationBell({ rol }) {
+  const { items, noLeidas, marcarLeidas, marcarLeida, revisar } = useNotificaciones();
   const { abierto, setAbierto, ref } = usePopover();
   const navigate = useNavigate();
 
+  const abrirPanel = () => { if (!abierto) revisar(); setAbierto((v) => !v); };
   const abrir = (n) => { marcarLeida(n.id); setAbierto(false); navigate(RUTA_OBRAS[rol] ?? "/obras"); };
 
   return (
     <div className="adm-pop" ref={ref}>
       <button type="button" className="adm-btn adm-btn-sm adm-icon-btn adm-bell" aria-haspopup="true" aria-expanded={abierto}
-        aria-label={noLeidas ? `Notificaciones: ${noLeidas} sin leer` : "Notificaciones"} title="Notificaciones" onClick={() => setAbierto((v) => !v)}>
+        aria-label={noLeidas ? `Notificaciones: ${noLeidas} sin leer` : "Notificaciones"} title="Notificaciones" onClick={abrirPanel}>
         <IconCampana />
         {noLeidas > 0 && <span className="adm-badge" aria-hidden="true">{noLeidas > 9 ? "9+" : noLeidas}</span>}
       </button>
@@ -34,18 +35,17 @@ export default function NotificationBell({ usuario, rol }) {
             <strong className="adm-pop-title">Notificaciones de obras</strong>
             <div>
               <button type="button" className="adm-link" onClick={marcarLeidas} disabled={!noLeidas}>Marcar leídas</button>
-              <button type="button" className="adm-link" onClick={limpiar} disabled={!items.length}>Limpiar</button>
             </div>
           </div>
           {items.length === 0 ? (
-            <p className="adm-notifs-empty">Sin novedades. Te avisaremos cuando una obra cambie de estado o se asigne.</p>
+            <p className="adm-notifs-empty">Sin novedades. Te avisaremos cuando una obra cambie de estado, se te asigne o reciba una novedad.</p>
           ) : (
             <ul>
               {items.map((n) => (
                 <li key={n.id}>
                   <button type="button" className={`adm-notif ${n.tono ?? "info"}${n.leida ? " leida" : ""}`} onClick={() => abrir(n)}>
                     <span className="adm-notif-dot" aria-hidden="true" />
-                    <span><span className="adm-notif-text">{n.texto}</span><small>{hace(n.fecha)}{n.leida ? "" : " · nueva"}</small></span>
+                    <span><span className="adm-notif-text">{n.mensaje}</span><small>{hace(n.fechaCreacion)}{n.leida ? "" : " · nueva"}</small></span>
                   </button>
                 </li>
               ))}
