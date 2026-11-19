@@ -2,13 +2,15 @@ import { useCallback, useEffect, useState } from "react";
 import { getObras } from "../api/obras";
 import AppLayout from "../components/AppLayout";
 import CostosForm from "../components/CostosForm";
+import { SeguimientoDeObra } from "../components/Seguimiento";
 import { Alert, EstadoPill, Modal, Toast } from "../components/ui";
 import { useToast } from "../hooks/useToast";
 import { lista } from "../lib/datos";
 import { mensajeError } from "../lib/errores";
 import { fecha } from "../lib/format";
 import { ESTADO_OBRA } from "../lib/roles";
-
+import IncidenciasObra from "../components/IncidenciasObra";
+import { ESTADOS_ABIERTOS } from "../lib/incidencias";
 const FILTROS = [{ value: "", label: "Todas" }, ...Object.entries(ESTADO_OBRA).map(([value, e]) => ({ value, label: e.label }))];
 
 // Vista móvil del técnico: solo sus obras (el backend filtra), formato tarjeta, SIN buscador
@@ -19,6 +21,8 @@ export default function TecnicoPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [registrando, setRegistrando] = useState(null);
+  const [viendo, setViendo] = useState(null);
+  const [comentando, setComentando] = useState(null);
   const { aviso, mostrar } = useToast();
 
   const cargar = useCallback(async () => {
@@ -57,6 +61,8 @@ export default function TecnicoPage() {
             {o.estado === "EN_PROCESO"
               ? <button className="adm-btn adm-btn-primary" onClick={() => setRegistrando(o)}>Registrar horas y materiales</button>
               : <small className="adm-sub">Esta obra ya no admite registro de horas.</small>}
+            <button className="adm-btn" style={{ marginTop: 8 }} onClick={() => setViendo(o)}>Ver seguimiento</button>
+            <button className="adm-btn" style={{ marginTop: 8 }} onClick={() => setComentando(o)}>Novedades y comentarios</button>
           </article>
         ))}
       </div>
@@ -65,7 +71,19 @@ export default function TecnicoPage() {
           <CostosForm obraId={registrando.id} ocultarValorHora onCancel={() => setRegistrando(null)} onGuardado={() => { setRegistrando(null); mostrar("Horas y materiales guardados."); }} />
         </Modal>
       )}
+      {viendo && (
+        <Modal titulo={`Seguimiento · ${viendo.nombre}`} onClose={() => setViendo(null)}>
+          <SeguimientoDeObra obraId={viendo.id} />
+          <div className="adm-modal-actions"><button className="adm-btn" onClick={() => setViendo(null)}>Cerrar</button></div>
+        </Modal>
+      )}
       <Toast>{aviso}</Toast>
+      {comentando && (
+  <Modal titulo={`Novedades · ${comentando.nombre}`} descripcion="Deja constancia de lo que ocurra en terreno: ausencias, retrasos, falta de materiales, etc. Se avisa al supervisor." onClose={() => setComentando(null)}>
+    <IncidenciasObra obraId={comentando.id} puedeRegistrar={ESTADOS_ABIERTOS.includes(comentando.estado)} onRegistrada={mostrar} />
+    <div className="adm-modal-actions"><button className="adm-btn" onClick={() => setComentando(null)}>Cerrar</button></div>
+  </Modal>
+)}
     </AppLayout>
   );
 }

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { aprobarPresupuesto, getPresupuesto, getPresupuestoPdf, getPresupuestos, rechazarPresupuesto } from "../../api/presupuestos";
 import { getRole } from "../../api/auth";
+import { getSeguimientoPresupuesto } from "../../api/seguimiento";
 import AppLayout from "../../components/AppLayout";
+import Seguimiento from "../../components/Seguimiento";
 import { Alert, ConfirmModal, DataTable, EstadoPill, Modal, Pager, Toast } from "../../components/ui";
 import { useToast } from "../../hooks/useToast";
 import { descargarBlob, lista, paginaVacia } from "../../lib/datos";
@@ -15,6 +17,7 @@ const FILTROS = [{ value: "", label: "Todos los estados" }, ...Object.entries(ES
 function Detalle({ id, puedeDecidir, puedeEditar, onClose, onAprobar, onRechazar, onEditar, onPdf }) {
   const [p, setP] = useState(null);
   const [error, setError] = useState(null);
+  const cargarSeguimiento = useCallback(() => getSeguimientoPresupuesto(id), [id]);
   useEffect(() => { let a = true; getPresupuesto(id).then((r) => a && setP(r)).catch((e) => a && setError(mensajeError(e))); return () => { a = false; }; }, [id]);
 
   return (
@@ -31,6 +34,8 @@ function Detalle({ id, puedeDecidir, puedeEditar, onClose, onAprobar, onRechazar
             <div><h3>FECHA DE APROBACIÓN</h3><p>{fecha(p.fechaAprobacion)}</p></div>
             {p.motivoRechazo && <div className="wide"><h3>MOTIVO DE RECHAZO</h3><p>{p.motivoRechazo}</p></div>}
           </div>
+          <h3 className="adm-section">Seguimiento</h3>
+          <Seguimiento cargar={cargarSeguimiento} />
           <h3 className="adm-section">Ítems</h3>
           <DataTable rowKey="descripcion" columnas={[
             { label: "Descripción", render: (i) => i.descripcion },

@@ -2,8 +2,9 @@ import { useState } from "react";
 import { usePopover } from "../hooks/usePopover";
 import { guardarTema, leerTema, PALETAS } from "../lib/tema";
 import { IconLuna, IconPaleta, IconSol } from "./icons";
+import TextControls from "./TextControls";
 
-// Dos botones: selector de paleta de color y alternador modo claro / oscuro.
+// Tres botones: tamaño de letra, selector de paleta de color y alternador modo claro / oscuro.
 export default function ThemeControls() {
   const [tema, setTema] = useState(leerTema);
   const { abierto, setAbierto, ref } = usePopover();
@@ -17,6 +18,7 @@ export default function ThemeControls() {
 
   return (
     <div className="adm-theme">
+      <TextControls />
       <div className="adm-pop" ref={ref}>
         <button type="button" className="adm-btn adm-btn-sm adm-icon-btn" aria-label="Cambiar paleta de colores" aria-haspopup="true" aria-expanded={abierto} title="Paleta de colores" onClick={() => setAbierto((v) => !v)}>
           <IconPaleta />

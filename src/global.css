@@ -1,5 +1,7 @@
 @import "./styles/app.css";
 
+:root { --fs: 1; }
+
 * { box-sizing: border-box; }
 
 html, body, #root {
@@ -19,3 +21,6 @@ body {
 }
 
 button, input, select, textarea { font: inherit; }
+
+/* Texto en negrita (opción del usuario) */
+html[data-negrita="1"] body { font-weight: 700; }

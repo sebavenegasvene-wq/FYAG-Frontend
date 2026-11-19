@@ -9,9 +9,9 @@ import { erroresPorCampo, mensajeError } from "../../lib/errores";
 
 const VACIO = { rut: "", razonSocial: "", direccion: "", email: "", telefono: "" };
 
-function validar(f) {
+function validar(f, editando) {
   const e = {};
-  if (!/^\d{7,8}-[\dkK]$/.test(f.rut.trim())) e.rut = "Formato inválido (ej: 76123456-7)";
+  if (!editando && !/^\d{7,8}-[\dkK]$/.test(f.rut.trim())) e.rut = "Formato inválido (ej: 76123456-7)";
   if (!f.razonSocial.trim()) e.razonSocial = "La razón social es obligatoria";
   if (f.email.trim() && !/^\S+@\S+\.\S+$/.test(f.email.trim())) e.email = "Correo no válido";
   return e;
@@ -26,10 +26,10 @@ function ClienteModal({ cliente, onClose, onGuardado }) {
 
   const enviar = async (ev) => {
     ev.preventDefault();
-    const e = validar(form);
+    const e = validar(form, !!cliente);
     if (Object.keys(e).length) return setErrors(e);
     setGuardando(true); setErrorServidor(null);
-    const payload = { rut: form.rut.trim(), razonSocial: form.razonSocial.trim(), direccion: form.direccion.trim() || null, email: form.email.trim() || null, telefono: form.telefono.trim() || null };
+    const payload = { razonSocial: form.razonSocial.trim(), direccion: form.direccion.trim() || null, email: form.email.trim() || null, telefono: form.telefono.trim() || null, ...(cliente ? {} : { rut: form.rut.trim() }) };
     try {
       if (cliente) await updateCliente(cliente.id, payload); else await createCliente(payload);
       onGuardado(cliente ? "Cliente actualizado." : "Cliente registrado.");
@@ -47,7 +47,13 @@ function ClienteModal({ cliente, onClose, onGuardado }) {
     <Modal titulo={cliente ? "Editar cliente" : "Nuevo cliente"} onClose={onClose} onSubmit={enviar} bloquear={guardando}>
       <Alert>{errorServidor}</Alert>
       <div className="adm-form-grid">
-        {campo("rut", "RUT", { hint: "Sin puntos y con guion: 76123456-7" })}
+        {cliente ? (
+          <div className="adm-field">
+            <label>RUT</label>
+            <strong>{cliente.rut}</strong>
+            <small className="hint">El RUT no se puede modificar.</small>
+          </div>
+        ) : campo("rut", "RUT", { hint: "Sin puntos y con guion: 76123456-7" })}
         {campo("telefono", "Teléfono (opcional)")}
         {campo("razonSocial", "Razón social", { wide: true })}
         {campo("direccion", "Dirección (opcional)", { wide: true })}

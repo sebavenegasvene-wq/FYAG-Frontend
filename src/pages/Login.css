@@ -62,7 +62,7 @@
   background: var(--surface-2);
   color: var(--text);
   box-shadow: 0 12px 28px rgba(0, 0, 0, .4);
-  font-size: 12px;
+  font-size: calc(12px * var(--fs, 1));
   line-height: 1.5;
 }
 .fyag-login-badge {
@@ -72,27 +72,27 @@
   border-radius: 4px;
   background: var(--accent);
   color: var(--accent-ink);
-  font-size: 12px;
+  font-size: calc(12px * var(--fs, 1));
   font-weight: 800;
 }
 .fyag-login-card h1 {
   margin: 0;
   color: var(--text);
   text-align: center;
-  font-size: clamp(22px, 5vw, 26px);
+  font-size: calc(clamp(22px, 5vw, 26px) * var(--fs, 1));
   font-weight: 800;
 }
 .fyag-login-subtitle {
   margin: 7px 0 32px;
   color: var(--muted);
   text-align: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--fs, 1));
 }
 .fyag-login-label {
   display: block;
   margin: 0 0 8px;
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(12px * var(--fs, 1));
   font-weight: 700;
 }
 .fyag-login-label-row {
@@ -111,7 +111,7 @@
   border-radius: 6px;
   background: var(--surface-2);
   color: var(--text);
-  font-size: 11px;
+  font-size: calc(11px * var(--fs, 1));
   font-weight: 700;
   cursor: pointer;
   transition: border-color 0.15s ease, background-color 0.15s ease;
@@ -134,7 +134,7 @@
   background: var(--bg-in);
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--fs, 1));
 }
 .fyag-login-select {
   cursor: pointer;
@@ -153,7 +153,7 @@
   border-radius: 8px;
   background: var(--accent);
   color: var(--accent-ink);
-  font-size: 13px;
+  font-size: calc(13px * var(--fs, 1));
   font-weight: 800;
   cursor: pointer;
 }
@@ -166,7 +166,7 @@
   border-radius: 7px;
   background: var(--bad-bg);
   color: var(--bad);
-  font-size: 13px;
+  font-size: calc(13px * var(--fs, 1));
 }
 @media (max-width: 480px) {
   .fyag-login { padding: 20px 14px; }

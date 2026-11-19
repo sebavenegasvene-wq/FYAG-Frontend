@@ -34,7 +34,7 @@ export default function AppLayout({ title, subtitle, actions, children }) {
           </nav>
           <div className="adm-user">
             <div className="adm-user-info"><strong>{username}</strong><small>{ROLE_LABEL[role] ?? role}</small></div>
-            <NotificationBell usuario={username} rol={role} />
+            <NotificationBell rol={role} />
             <ThemeControls />
             <button className="adm-btn adm-btn-sm adm-logout" onClick={cerrarSesion}>Cerrar sesión</button>
           </div>

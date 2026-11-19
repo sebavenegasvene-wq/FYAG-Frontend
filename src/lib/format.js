@@ -24,10 +24,9 @@ export const diasAtraso = (vencimiento) => {
 
 // "costoManoObra" -> "Costo mano obra"
 export const humanizar = (clave) => {
-  const t = String(clave).replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim().toLowerCase();
+  const t = String(clave).replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/_/g, " ").trim().toLowerCase();
   return t.charAt(0).toUpperCase() + t.slice(1);
 };
-
 // Rango de un mes calendario (offset 0 = mes actual hasta hoy, -1 = mes anterior completo) en formato yyyy-mm-dd
 const pad = (n) => String(n).padStart(2, "0");
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
