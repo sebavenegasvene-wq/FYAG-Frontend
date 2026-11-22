@@ -5,10 +5,13 @@ import { Alert, Field, Modal } from "../../components/ui";
 import { mensajeError } from "../../lib/errores";
 import { clp } from "../../lib/format";
 
+// FORMULARIO DE PRESUPUESTO: elegir cliente y agregar ítems (líneas con descripción y monto).
 const itemVacio = () => ({ descripcion: "", monto: "" });
 
 // Crea o edita (solo PENDIENTE) un presupuesto: cliente + al menos un ítem (HU-01). El total se calcula solo.
+// Sirve para crear uno nuevo o editar uno Pendiente. El total se calcula solo
 export default function PresupuestoForm({ presupuestoId, onClose, onGuardado }) {
+  // Estados: cliente elegido, lista de ítems, errores
   const [cliente, setCliente] = useState(null);
   const [items, setItems] = useState([itemVacio()]);
   const [cargando, setCargando] = useState(Boolean(presupuestoId));
@@ -16,6 +19,7 @@ export default function PresupuestoForm({ presupuestoId, onClose, onGuardado }) 
   const [errorServidor, setErrorServidor] = useState(null);
   const [errores, setErrores] = useState({});
 
+  // Si se está editando, carga el presupuesto existente
   useEffect(() => {
     if (!presupuestoId) return undefined;
     let activo = true;
@@ -27,9 +31,12 @@ export default function PresupuestoForm({ presupuestoId, onClose, onGuardado }) 
     return () => { activo = false; };
   }, [presupuestoId]);
 
+  // Suma de los montos de los ítems
   const total = items.reduce((s, i) => s + (Number(i.monto) || 0), 0);
+  // Modifica un campo de un ítem
   const cambiarItem = (idx, campo, valor) => { setItems((l) => l.map((it, i) => (i === idx ? { ...it, [campo]: valor } : it))); setErrores((e) => ({ ...e, items: null })); };
 
+  // Valida (cliente elegido y cada ítem con descripción y monto mayor a 0) y guarda. Queda Pendiente
   const enviar = async (ev) => {
     ev.preventDefault();
     const e = {};
@@ -50,10 +57,12 @@ export default function PresupuestoForm({ presupuestoId, onClose, onGuardado }) 
       <Alert>{errorServidor}</Alert>
       {cargando ? <p className="adm-sub">Cargando presupuesto...</p> : (
         <>
+          {/* Buscador de cliente */}
           <Field label="Cliente" name="cliente" error={errores.cliente}>
             <ClienteSelect value={cliente} onChange={(c) => { setCliente(c); setErrores((x) => ({ ...x, cliente: null })); }} error={errores.cliente} />
           </Field>
           <h3 className="adm-section" style={{ marginTop: 20 }}>Ítems de la cotización</h3>
+          {/* Un renglón por ítem, con botón para quitarlo */}
           <div className="adm-items">
             {items.map((it, idx) => (
               <div className="adm-item" key={idx}>
@@ -65,6 +74,7 @@ export default function PresupuestoForm({ presupuestoId, onClose, onGuardado }) 
           </div>
           {errores.items && <small role="alert" style={{ color: "var(--bad)" }}>{errores.items}</small>}
           <p><button type="button" className="adm-btn adm-btn-sm" style={{ marginTop: 10 }} onClick={() => setItems((l) => [...l, itemVacio()])}>＋ Agregar ítem</button></p>
+          {/* Monto total calculado */}
           <div className="adm-total"><span>Monto total</span><strong>{clp(total)}</strong></div>
         </>
       )}

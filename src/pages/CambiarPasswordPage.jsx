@@ -4,20 +4,25 @@ import { cambiarPassword, getPerfil } from "../api/usuarios";
 import { guardarPerfil, homeFor, logout } from "../api/auth";
 import { useForm } from "../hooks/useForm";
 
+// CAMBIAR CONTRASEÑA: pantalla obligatoria en el primer ingreso (contraseña temporal) y opcional después.
 export default function CambiarPasswordPage() {
   const navigate = useNavigate();
+  // Usa el hook useForm para los campos y errores
   const { form, errors, setErrors, handleChange, resetForm } = useForm({ passwordActual: "", passwordNueva: "", confirmar: "" });
   const [error, setError] = useState(null);
   const [ok, setOk] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
+  // Sin sesión no se puede entrar a esta pantalla
   if (!localStorage.getItem("token")) {
     navigate("/login", { replace: true });
     return null;
   }
 
+  // true si el usuario tiene contraseña temporal y debe cambiarla
   const obligatorio = localStorage.getItem("debeCambiarPassword") === "true";
 
+  // Valida la nueva contraseña (8 a 72 caracteres, distinta a la actual y bien confirmada) y la envía
   const enviar = async (event) => {
     event.preventDefault();
     const e = {};
@@ -30,7 +35,9 @@ export default function CambiarPasswordPage() {
     setGuardando(true);
     setError(null);
     try {
+      // Envía al backend la contraseña actual y la nueva
       await cambiarPassword({ passwordActual: form.passwordActual, passwordNueva: form.passwordNueva });
+      // Vuelve a pedir el perfil: ya no debe cambiar contraseña, así que puede entrar al sistema
       const perfil = await getPerfil();
       guardarPerfil(perfil);
       resetForm();
@@ -43,6 +50,7 @@ export default function CambiarPasswordPage() {
     }
   };
 
+  // Permite salir sin cambiar la contraseña (cierra sesión)
   const salir = () => { logout(); navigate("/login", { replace: true }); };
 
   return (

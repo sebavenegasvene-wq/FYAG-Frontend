@@ -7,11 +7,14 @@ import { lista, paginaVacia } from "../lib/datos";
 import { mensajeError } from "../lib/errores";
 import { clp, humanizar, rangoMes } from "../lib/format";
 
+// AUDITORÍA: historial de todo lo que se hizo en el sistema (quién, qué, cuándo, valor anterior y nuevo). Es solo lectura: nadie puede borrar ni editar estos registros.
 const CAMPOS_CLP = ["materiales", "valor_hora", "monto", "monto_total"];
 
+// Funciones para mostrar los valores: ¿es un número?, ¿dos valores son iguales?
 const esNumero = (v) => (typeof v === "number" || (typeof v === "string" && v.trim() !== "")) && !Number.isNaN(Number(v));
 const iguales = (a, b) => (esNumero(a) && esNumero(b) ? Number(a) === Number(b) : String(a ?? "") === String(b ?? ""));
 
+// Da formato legible a un valor (plata en pesos, números con puntos, Sí/No...)
 const formatear = (clave, v) => {
   if (v === null || v === undefined || v === "") return "—";
   if (typeof v === "boolean") return v ? "Sí" : "No";
@@ -22,6 +25,7 @@ const formatear = (clave, v) => {
 };
 
 // Solo los campos que realmente cambiaron
+// Compara valor anterior y nuevo y devuelve solo los campos que realmente cambiaron
 const cambiosDe = (log) => {
   const antes = log.valorAnterior ?? {};
   const despues = log.valorNuevo ?? {};
@@ -30,12 +34,14 @@ const cambiosDe = (log) => {
     .map((k) => ({ clave: k, antes: antes[k], despues: despues[k] }));
 };
 
+// Color de la etiqueta según la acción: rojo = anular/rechazar, verde = aprobar/pagar, ámbar = suspender
 const tonoAccion = (accion = "") =>
   /ANULAR|RECHAZAR|CANCELAR|DESACTIVAR/.test(accion) ? "bad"
   : /APROBAR|FINALIZAR|PAGO|ACTIVAR/.test(accion) ? "ok"
   : /SUSPEN/.test(accion) ? "warn"
   : "info";
 
+// Muestra la lista de cambios de un registro (antes tachado → después en negrita)
 function Cambios({ log }) {
   const cambios = cambiosDe(log);
   if (!cambios.length) return <small className="aud-muted">{log.valorAnterior || log.valorNuevo ? "Sin cambios en los valores" : "—"}</small>;
@@ -53,8 +59,11 @@ function Cambios({ log }) {
   );
 }
 
+// Pantalla de auditoría
 export default function AuditoriaPage() {
+  // El filtro por fecha parte con el mes actual
   const inicial = rangoMes(0);
+  // Tipo de consulta (todos, por usuario o por fecha) y valores de los filtros
   const [vista, setVista] = useState("todos"); // todos | usuario | fecha
   const [usuarioId, setUsuarioId] = useState("");
   const [desde, setDesde] = useState(inicial.desde);
@@ -66,9 +75,11 @@ export default function AuditoriaPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Carga la lista de usuarios para el filtro 'Por usuario' y para mostrar nombres
     getUsuarios({ size: 100 }).then((r) => setUsuarios(lista(r))).catch(() => setUsuarios([]));
   }, []);
 
+  // Pide los registros al backend según el filtro elegido, de 20 en 20 (paginado)
   const cargar = useCallback(async () => {
     setError(null);
     if (vista === "usuario" && !usuarioId) { setData(paginaVacia); setCargando(false); return; }
@@ -89,9 +100,12 @@ export default function AuditoriaPage() {
   }, [vista, usuarioId, desde, hasta, pagina]);
   useEffect(() => { cargar(); }, [cargar]);
 
+  // Al cambiar un filtro vuelve a la página 1
   const cambiar = (setter) => (e) => { setPagina(0); setter(e.target.value); };
+  // Convierte el id de usuario en su nombre de usuario
   const nombreUsuario = (id) => usuarios.find((u) => u.id === id)?.username ?? `#${id}`;
 
+  // Columnas de la tabla
   const columnas = [
     { label: "Fecha", render: (l) => {
       const d = new Date(l.fecha);
@@ -106,6 +120,7 @@ export default function AuditoriaPage() {
 
   return (
     <AppLayout title="Auditoría" subtitle="Historial de cambios del sistema (solo lectura). Los más recientes primero.">
+      {/* Filtros: tipo de consulta y, según el tipo, usuario o fechas */}
       <section className="adm-card">
         <div className="adm-toolbar">
           <div className="adm-filters">
@@ -128,6 +143,7 @@ export default function AuditoriaPage() {
           <button className="adm-btn" onClick={cargar}>Actualizar</button>
         </div>
         <Alert>{error}</Alert>
+        {/* Tabla con los registros y botones de página */}
         <DataTable columnas={columnas} filas={lista(data)} cargando={cargando}
           vacio={vista === "usuario" && !usuarioId ? "Selecciona un usuario para ver su historial." : "No hay registros de auditoría."} />
         <Pager data={data} pagina={pagina} setPagina={setPagina} unidad="registro(s)" />

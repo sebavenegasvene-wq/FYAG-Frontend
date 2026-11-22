@@ -3,7 +3,9 @@
 // Campos: titulo, texto, pasos[], limites[] (lo que no puede hacer), depende[] (qué debe hacer otro perfil antes).
 // Un paso puede ser un texto o p("texto", "Botón"): el segundo valor es el texto del botón o campo
 // al que apunta; el botón de ayuda le pone el mismo número en pantalla para que sepas dónde hacer clic.
+// Atajo para escribir un paso: p('texto', 'Nombre del botón')
 const p = (texto, ir) => ({ texto, ir });
+// Textos de ayuda por ruta (pantalla). 'roles' cambia lo que dice para cada perfil
 export const AYUDA = {
   "/inicio": {
     titulo: "Inicio",
@@ -168,6 +170,7 @@ export const AYUDA = {
 };
 
 // Une el contenido base con la versión del rol (si existe)
+// Devuelve la ayuda de una ruta mezclando el contenido base con el del rol
 export const ayudaPara = (ruta, role) => {
   const base = AYUDA[ruta];
   if (!base) return null;

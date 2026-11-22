@@ -1,3 +1,4 @@
+/* ESTILOS DE LA APLICACIÓN: pantallas internas (menú, tablas, tarjetas, ventanas, botones, ayuda). Los colores salen de variables (--bg, --accent...) que cambian con el tema. */
 /* =====================================================================
    FYAG · Sistema de diseño compartido
    Modo oscuro con paleta Slate (UI-01..UI-04 del informe de diseño).
@@ -415,11 +416,7 @@
 .adm-help-toggle svg { width: 15px; height: 15px; }
 .adm-help-box h3 svg { color: inherit; }
 .adm-tour { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
-.adm-tour-dot { position: absolute; display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 5px; border: 2px solid var(--bg); border-radius: 999px; background: var(--accent); color: var(--accent-ink); font: inherit; font-size: calc(12px * var(--fs, 1)); font-weight: 900; box-shadow: 0 2px 8px #000a; pointer-events: auto; cursor: pointer; animation: adm-tour-pulso 1.8s ease-out infinite; }
-.adm-tour-dot.activo { background: var(--warn); color: #000; transform: scale(1.2); }
 .adm-tour-ring { position: absolute; border: 2px solid var(--warn); border-radius: 8px; box-shadow: 0 0 0 4px #fbbf2433; }
-@keyframes adm-tour-pulso { 0% { box-shadow: 0 0 0 0 #ffffff88, 0 2px 8px #000a; } 70%, 100% { box-shadow: 0 0 0 10px #ffffff00, 0 2px 8px #000a; } }
-@media (prefers-reduced-motion: reduce) { .adm-tour-dot { animation: none; } }
 
 /* Novedades de obra */
 .adm-inc-list { display: grid; gap: 8px; margin: 0 0 14px; padding: 0; list-style: none; }
@@ -427,3 +424,26 @@
 .adm-inc header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .adm-inc small { color: var(--muted); }
 .adm-inc p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Mensajes de ayuda sobre cada botón: capa flotante, no mueve la interfaz */
+.adm-tip-medida { position: fixed; left: -9999px; top: 0; visibility: hidden; pointer-events: none; }
+.adm-tip-medida .adm-tip-b { width: max-content; animation: none; }
+.adm-tip { position: absolute; pointer-events: none; transition: left .25s ease, top .25s ease, bottom .25s ease; }
+.adm-tip-b { position: relative; display: block; padding: 8px 12px 9px; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-size: calc(12.5px * var(--fs, 1)); font-weight: 600; line-height: 1.35; text-align: left; box-shadow: 0 8px 20px #0009, 0 0 0 1px #ffffff26; transform-origin: var(--ax) 100%; animation: adm-tip-in .45s cubic-bezier(.34, 1.56, .64, 1) var(--d, 0ms) both; }
+.adm-tip.arriba .adm-tip-b { --dy: 10px; }
+.adm-tip.abajo .adm-tip-b { --dy: -10px; transform-origin: var(--ax) 0; }
+.adm-tip-b strong { display: block; margin-bottom: 2px; font-size: calc(13px * var(--fs, 1)); font-weight: 900; }
+.adm-tip-fila { display: block; margin-top: 4px; font-weight: 600; }
+.adm-tip-fila b { font-weight: 900; }
+.adm-tip-b::after { content: ""; position: absolute; left: calc(var(--ax) - 5px); width: 10px; height: 10px; border-radius: 2px; background: inherit; transform: rotate(45deg); }
+.adm-tip.arriba .adm-tip-b::after { bottom: -4px; }
+.adm-tip.abajo .adm-tip-b::after { top: -4px; }
+.adm-tip.activa .adm-tip-b { background: var(--warn); color: #000; }
+.adm-tip-line { position: absolute; width: 0; border-left: 2px dotted var(--accent); opacity: .6; transform-origin: top; animation: adm-line-in .35s ease-out var(--d, 0ms) both; }
+.adm-tour.salida .adm-tip-b, .adm-tour.salida .adm-tip-line { animation: adm-tip-out .18s ease-in both; }
+@keyframes adm-tip-in { from { opacity: 0; transform: translateY(var(--dy)) scale(.6); } to { opacity: 1; transform: none; } }
+@keyframes adm-tip-out { to { opacity: 0; transform: scale(.85); } }
+@keyframes adm-line-in { from { opacity: 0; transform: scaleY(0); } to { opacity: .6; transform: scaleY(1); } }
+.adm-help { transform-origin: bottom right; animation: adm-help-in .3s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes adm-help-in { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .adm-tip-b, .adm-tip-line, .adm-help { animation: none; } .adm-tip { transition: none; } }

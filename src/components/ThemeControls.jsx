@@ -5,19 +5,24 @@ import { IconLuna, IconPaleta, IconSol } from "./icons";
 import TextControls from "./TextControls";
 
 // Tres botones: tamaño de letra, selector de paleta de color y alternador modo claro / oscuro.
+// CONTROLES DE TEMA: tamaño de letra, paleta de colores y modo claro/oscuro.
 export default function ThemeControls() {
+  // El tema actual se lee del navegador al abrir
   const [tema, setTema] = useState(leerTema);
   const { abierto, setAbierto, ref } = usePopover();
 
+  // Cambia solo la parte indicada (paleta o modo), lo guarda y lo aplica al instante
   const cambiar = (parcial) => {
     const nuevo = { ...tema, ...parcial };
     setTema(nuevo);
     guardarTema(nuevo);
   };
+  // true si está en modo oscuro
   const oscuro = tema.modo === "dark";
 
   return (
     <div className="adm-theme">
+      {/* Botón 'Aa' del tamaño de letra */}
       <TextControls />
       <div className="adm-pop" ref={ref}>
         <button type="button" className="adm-btn adm-btn-sm adm-icon-btn" aria-label="Cambiar paleta de colores" aria-haspopup="true" aria-expanded={abierto} title="Paleta de colores" onClick={() => setAbierto((v) => !v)}>
@@ -26,6 +31,7 @@ export default function ThemeControls() {
         {abierto && (
           <div className="adm-pop-panel adm-palettes" role="group" aria-label="Paleta de colores">
             <strong className="adm-pop-title">Paleta de colores</strong>
+            {/* Un botón por cada paleta; la elegida se marca con ✓ */}
             {PALETAS.map((p) => (
               <button key={p.id} type="button" className="adm-palette" aria-pressed={tema.paleta === p.id} onClick={() => cambiar({ paleta: p.id })}>
                 <span className="adm-swatch" aria-hidden="true"><i style={{ background: p.muestra[0] }} /><i style={{ background: p.muestra[1] }} /></span>
@@ -37,6 +43,7 @@ export default function ThemeControls() {
         )}
       </div>
       <button type="button" className="adm-btn adm-btn-sm adm-icon-btn" aria-pressed={!oscuro} aria-label={oscuro ? "Cambiar a modo claro" : "Cambiar a modo oscuro"} title={oscuro ? "Modo claro" : "Modo oscuro"} onClick={() => cambiar({ modo: oscuro ? "light" : "dark" })}>
+        {/* Muestra el sol si está oscuro (para pasar a claro) y la luna si está claro */}
         {oscuro ? <IconSol /> : <IconLuna />}
       </button>
     </div>

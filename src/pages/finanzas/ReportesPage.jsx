@@ -14,11 +14,14 @@ import { clp, fecha, hoy, rangoMes } from "../../lib/format";
 import { ESTADO_OBRA, ESTADO_PAGO } from "../../lib/roles";
 
 // FormatoReporte del backend: ajusta estos valores si tu enum usa otros nombres.
+// REPORTES: descarga de informes de obras y cobranzas en PDF o Excel con filtros. El archivo trae solo lo filtrado.
 const FORMATOS = [{ value: "PDF", label: "PDF", ext: "pdf" }, { value: "EXCEL", label: "Excel", ext: "xlsx" }];
 
 // HU-19 (Finanzas: obras y cobranzas) y HU-20 (Gerencia: reporte por técnico). El archivo solo incluye lo filtrado.
+// Pantalla de reportes (Finanzas: obras y cobranzas; Gerencia: obras, también por técnico)
 export default function ReportesPage() {
   const esGerencia = getRole() === "GERENCIA";
+  // Estados: tipo de reporte, filtros elegidos, listas para los menús y vista previa
   const [tipo, setTipo] = useState("obras");
   const [f, setF] = useState({ formato: "PDF", desde: "", hasta: "", estado: "", tecnicoId: "", clienteId: "" });
   const [tecnicos, setTecnicos] = useState([]);
@@ -29,6 +32,7 @@ export default function ReportesPage() {
   const { aviso, mostrar } = useToast();
 
   useEffect(() => {
+    // Carga técnicos y clientes para los menús de filtro
     getTecnicos().then((r) => setTecnicos(lista(r))).catch(() => {});
     getClientes({ size: 100 }).then((r) => setClientes(lista(r))).catch(() => {});
   }, []);
@@ -38,6 +42,7 @@ export default function ReportesPage() {
   useEffect(() => {
     let activo = true;
     setVista((v) => ({ ...v, cargando: true, error: null }));
+    // Arma los filtros y consulta los datos para la vista previa
     const params = { page: 0, size: 100 };
     if (tipo === "obras") { if (f.estado) params.estado = f.estado; if (f.tecnicoId) params.tecnicoId = f.tecnicoId; }
     else if (f.estado) params.estadoPago = f.estado;
@@ -50,6 +55,7 @@ export default function ReportesPage() {
     return () => { activo = false; };
   }, [tipo, f.estado, f.tecnicoId, f.clienteId, f.desde, f.hasta]);
 
+  // Aplica también los filtros en pantalla para que la vista previa siempre coincida con lo elegido
   const filasVista = useMemo(() => {
     const cli = clientes.find((c) => String(c.id) === String(f.clienteId));
     const tec = tecnicos.find((t) => String(t.id) === String(f.tecnicoId));
@@ -63,8 +69,10 @@ export default function ReportesPage() {
       return true;
     });
   }, [vista.filas, tipo, f, clientes, tecnicos]);
+  // Suma de montos (solo en cobranzas)
   const totalMonto = tipo === "cobranzas" ? filasVista.reduce((s, x) => s + Number(x.monto ?? 0), 0) : null;
 
+  // Columnas de la vista previa según el tipo de reporte
   const columnasVista = tipo === "obras"
     ? [
       { label: "Obra", render: (o) => <strong>{o.nombre}</strong> },
@@ -82,9 +90,11 @@ export default function ReportesPage() {
       { label: "Estado", render: (x) => <EstadoPill mapa={ESTADO_PAGO} valor={x.estadoPago} /> },
     ];
 
+  // Actualiza el filtro que se movió
   const cambiar = (e) => { setF((x) => ({ ...x, [e.target.name]: e.target.value })); setError(null); };
 
   // Genera y descarga un reporte; "clave" identifica qué botón está trabajando.
+  // Pide el archivo al backend y lo descarga; si falla, muestra el detalle del error
   const generar = async (clave, tipoRep, params, nombre) => {
     setDescargando(clave); setError(null);
     try {
@@ -99,6 +109,7 @@ export default function ReportesPage() {
     } finally { setDescargando(null); }
   };
 
+  // Valida las fechas y descarga el reporte con los filtros elegidos
   const descargar = (ev) => {
     ev.preventDefault();
     if (f.desde && f.hasta && f.hasta < f.desde) return setError("La fecha «hasta» no puede ser anterior a «desde».");
@@ -110,10 +121,12 @@ export default function ReportesPage() {
   };
 
   // Descargas rápidas en PDF del mes actual (hasta hoy) y del mes anterior, sin configurar filtros
+  // Descargas rápidas en PDF: mes actual y mes anterior
   const rapidos = [0, -1].map((offset) => ({ offset, ...rangoMes(offset) }));
   const rapido = (offset, tipoRep, r) =>
     generar(`${offset}-${tipoRep}`, tipoRep, { formato: "PDF", desde: r.desde, hasta: r.hasta }, `reporte-${tipoRep}-${r.desde}_a_${r.hasta}.pdf`);
 
+  // Estados disponibles según el tipo de reporte
   const estados = tipo === "obras"
     ? Object.entries(ESTADO_OBRA).map(([value, e]) => ({ value, label: e.label }))
     : [{ value: "PENDIENTE", label: "Pendiente" }, { value: "PAGADO", label: "Pagado" }];
@@ -121,6 +134,7 @@ export default function ReportesPage() {
   return (
     <AppLayout title="Reportes" subtitle={esGerencia ? "Genera reportes de obras, por técnico, para evaluar carga y desempeño." : "Exporta obras y cobranzas a PDF o Excel con los filtros que necesites."}>
       <Alert>{error}</Alert>
+      {/* Descargas rápidas con un clic */}
       <section className="adm-card adm-quick" aria-label="Descargas rápidas del mes">
         <h2 className="adm-card-title">Descargas rápidas en PDF</h2>
         <p className="adm-card-sub">Un clic, sin filtros: el reporte del mes actual (hasta hoy) o del mes anterior.</p>
@@ -139,6 +153,7 @@ export default function ReportesPage() {
           ))}
         </div>
       </section>
+      {/* Formulario de filtros para el reporte personalizado */}
       <form className="adm-card" onSubmit={descargar} noValidate>
         <div className="adm-tabs" role="tablist">
           <button type="button" role="tab" aria-selected={tipo === "obras"} onClick={() => { setTipo("obras"); setF((x) => ({ ...x, estado: "" })); }}>Obras</button>
@@ -160,6 +175,7 @@ export default function ReportesPage() {
               <option value="">Todos los clientes</option>{clientes.map((c) => <option key={c.id} value={c.id}>{c.razonSocial}</option>)}
             </select>
           </Field>
+          {/* El filtro de técnico solo aparece en reportes de obras */}
           {tipo === "obras" && (
             <Field label="Técnico" name="tecnicoId">
               <select id="f-tecnicoId" name="tecnicoId" className="adm-select" value={f.tecnicoId} onChange={cambiar}>
@@ -173,6 +189,7 @@ export default function ReportesPage() {
           <button type="button" className="adm-btn" onClick={() => setF({ formato: f.formato, desde: "", hasta: "", estado: "", tecnicoId: "", clienteId: "" })}>Limpiar filtros</button>
         </div>
       </form>
+      {/* Vista previa de los datos que se van a exportar */}
       <section className="adm-card" style={{ marginTop: 16 }} aria-label="Vista previa del reporte">
         <div className="adm-toolbar">
           <div>

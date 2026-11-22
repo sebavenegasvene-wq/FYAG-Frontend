@@ -7,8 +7,10 @@ import { useToast } from "../../hooks/useToast";
 import { lista, paginaVacia } from "../../lib/datos";
 import { erroresPorCampo, mensajeError } from "../../lib/errores";
 
+// CLIENTES: directorio de clientes (solo Finanzas). Un presupuesto siempre se hace sobre un cliente que ya exista.
 const VACIO = { rut: "", razonSocial: "", direccion: "", email: "", telefono: "" };
 
+// Validaciones: RUT con formato 76123456-7, razón social obligatoria y correo válido
 function validar(f, editando) {
   const e = {};
   if (!editando && !/^\d{7,8}-[\dkK]$/.test(f.rut.trim())) e.rut = "Formato inválido (ej: 76123456-7)";
@@ -17,6 +19,7 @@ function validar(f, editando) {
   return e;
 }
 
+// Ventana para crear o editar un cliente (el RUT no se puede cambiar al editar)
 function ClienteModal({ cliente, onClose, onGuardado }) {
   const { form, errors, setErrors, handleChange } = useForm(cliente ? {
     rut: cliente.rut ?? "", razonSocial: cliente.razonSocial ?? "", direccion: cliente.direccion ?? "", email: cliente.email ?? "", telefono: cliente.telefono ?? "",
@@ -24,6 +27,7 @@ function ClienteModal({ cliente, onClose, onGuardado }) {
   const [guardando, setGuardando] = useState(false);
   const [errorServidor, setErrorServidor] = useState(null);
 
+  // Valida y guarda (crea o actualiza según corresponda)
   const enviar = async (ev) => {
     ev.preventDefault();
     const e = validar(form, !!cliente);
@@ -37,6 +41,7 @@ function ClienteModal({ cliente, onClose, onGuardado }) {
     finally { setGuardando(false); }
   };
 
+  // Dibuja un campo del formulario
   const campo = (name, label, extra = {}) => (
     <Field label={label} name={name} error={errors[name]} hint={extra.hint} wide={extra.wide}>
       <input id={`f-${name}`} name={name} type={extra.type ?? "text"} className={`adm-input${errors[name] ? " error" : ""}`} value={form[name]} onChange={handleChange} autoComplete="off" />
@@ -47,6 +52,7 @@ function ClienteModal({ cliente, onClose, onGuardado }) {
     <Modal titulo={cliente ? "Editar cliente" : "Nuevo cliente"} onClose={onClose} onSubmit={enviar} bloquear={guardando}>
       <Alert>{errorServidor}</Alert>
       <div className="adm-form-grid">
+        {/* Al editar, el RUT se muestra fijo; al crear, es un campo */}
         {cliente ? (
           <div className="adm-field">
             <label>RUT</label>
@@ -54,6 +60,7 @@ function ClienteModal({ cliente, onClose, onGuardado }) {
             <small className="hint">El RUT no se puede modificar.</small>
           </div>
         ) : campo("rut", "RUT", { hint: "Sin puntos y con guion: 76123456-7" })}
+        {/* Resto de los campos */}
         {campo("telefono", "Teléfono (opcional)")}
         {campo("razonSocial", "Razón social", { wide: true })}
         {campo("direccion", "Dirección (opcional)", { wide: true })}
@@ -67,18 +74,22 @@ function ClienteModal({ cliente, onClose, onGuardado }) {
   );
 }
 
+// Pantalla con la lista de clientes
 export default function ClientesPage() {
   const [pagina, setPagina] = useState(0);
   const [data, setData] = useState(paginaVacia);
   const [busqueda, setBusqueda] = useState("");
+  // 'busqueda' es lo que se escribe y 'termino' lo que realmente se consulta (con una pequeña espera)
   const [termino, setTermino] = useState("");
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState(null); // {} nuevo | cliente
   const { aviso, mostrar } = useToast();
 
+  // Espera 350 ms tras la última tecla antes de buscar, para no consultar en cada letra
   useEffect(() => { const t = setTimeout(() => { setPagina(0); setTermino(busqueda.trim()); }, 350); return () => clearTimeout(t); }, [busqueda]);
 
+  // Pide los clientes al backend (10 por página, con búsqueda por RUT o razón social)
   const cargar = useCallback(async () => {
     setCargando(true); setError(null);
     try {
@@ -91,6 +102,7 @@ export default function ClientesPage() {
   }, [pagina, termino]);
   useEffect(() => { cargar(); }, [cargar]);
 
+  // Columnas de la tabla
   const columnas = [
     { label: "RUT", render: (c) => c.rut },
     { label: "Razón social", render: (c) => <strong>{c.razonSocial}</strong> },
@@ -103,6 +115,7 @@ export default function ClientesPage() {
   return (
     <AppLayout title="Clientes" subtitle="Directorio de clientes. Los presupuestos se registran siempre sobre un cliente existente."
       actions={<button className="adm-btn adm-btn-primary" onClick={() => setModal({})}>＋ Nuevo cliente</button>}>
+      {/* Buscador, tabla y paginación */}
       <section className="adm-card">
         <div className="adm-toolbar">
           <div className="adm-filters">
@@ -113,6 +126,7 @@ export default function ClientesPage() {
         <DataTable columnas={columnas} filas={lista(data)} cargando={cargando} vacio="No se encontraron clientes." />
         <Pager data={data} pagina={pagina} setPagina={setPagina} unidad="cliente(s)" />
       </section>
+      {/* Ventana de crear/editar */}
       {modal && <ClienteModal cliente={modal.id ? modal : null} onClose={() => setModal(null)} onGuardado={(m) => { setModal(null); mostrar(m); cargar(); }} />}
       <Toast>{aviso}</Toast>
     </AppLayout>

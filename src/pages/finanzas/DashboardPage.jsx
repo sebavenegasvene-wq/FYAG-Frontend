@@ -11,14 +11,18 @@ import { clp } from "../../lib/format";
 import { ESTADO_OBRA } from "../../lib/roles";
 
 // UI-02: cuatro KPIs que se actualizan solos al cargar + resumen por estado y por servicio (EP-05, HU-16..18).
+// DASHBOARD de Gerencia y Finanzas: 5 indicadores del negocio (ventas, presupuestos, obras en proceso, cuentas por cobrar) y gráficos de barras. Se actualiza al cargar, sin generar reportes manuales.
 export default function DashboardPage() {
+  // El rol cambia solo el título (Gerencial o Financiero)
   const rol = getRole();
+  // Estados: indicadores financieros, obras y clientes con deuda
   const [fin, setFin] = useState(null);
   const [obras, setObras] = useState([]);
   const [deudores, setDeudores] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
 
+  // Pide los tres datos a la vez; allSettled permite mostrar lo que sí llegó aunque uno falle
   const cargar = useCallback(async () => {
     setCargando(true); setError(null);
     const [d, o, p] = await Promise.allSettled([getDashboard(), getObras({ size: 200 }), getClientesPendientes()]);
@@ -29,7 +33,9 @@ export default function DashboardPage() {
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
 
+  // Muestra — mientras carga o si no hay dato
   const v = (x) => (cargando ? "—" : x ?? "—");
+  // Prepara los datos de los gráficos: obras por estado, por tipo de servicio y las 5 mayores deudas
   const porEstado = Object.entries(ESTADO_OBRA).map(([k, e]) => ({ label: e.label, tono: e.tono, valor: obras.filter((o) => o.estado === k).length }));
   const conteoServicio = new Map();
   obras.forEach((o) => conteoServicio.set(o.tipoServicioNombre ?? "Sin clasificar", (conteoServicio.get(o.tipoServicioNombre ?? "Sin clasificar") ?? 0) + 1));
@@ -42,6 +48,7 @@ export default function DashboardPage() {
     <AppLayout title={rol === "GERENCIA" ? "Dashboard gerencial" : "Dashboard financiero"} subtitle="Indicadores del negocio, actualizados al cargar la vista. Verde: pagado o finalizado. Rojo: pendiente."
       actions={<button className="adm-btn" onClick={cargar} disabled={cargando}>{cargando ? "Actualizando..." : "↻ Actualizar"}</button>}>
       <Alert>{error}</Alert>
+      {/* Tarjetas de indicadores (verde = bueno, rojo = pendiente) */}
       <section className="adm-kpis" aria-label="Indicadores principales">
         <Kpi titulo="VENTAS DEL MES" tono="ok" valor={v(fin && clp(fin.ventasDelMes))} detalle="Facturas pagadas en el mes" />
         <Kpi titulo="PRESUPUESTOS APROBADOS" tono="ok" valor={v(fin?.presupuestosAprobados)} detalle="Habilitan la creación de obras" />
@@ -49,12 +56,14 @@ export default function DashboardPage() {
         <Kpi titulo="OBRAS EN PROCESO" tono="info" valor={v(fin?.obrasEnProceso)} detalle="En ejecución actualmente" />
         <Kpi titulo="CUENTAS POR COBRAR" tono="bad" valor={v(fin && clp(fin.cuentasPorCobrar))} detalle="Facturas pendientes de pago" />
       </section>
+      {/* Dos gráficos de barras lado a lado */}
       <div className="adm-grid-2">
         <section className="adm-card"><h2 className="adm-card-title">Obras por estado</h2><p className="adm-card-sub">Cartera registrada hasta hoy</p><Barras items={porEstado} /></section>
         <section className="adm-card"><h2 className="adm-card-title">Obras por tipo de servicio</h2><p className="adm-card-sub">Los servicios con más obras</p><Barras items={porServicio} /></section>
       </div>
       <section className="adm-card">
         <h2 className="adm-card-title">Mayores deudas pendientes</h2><p className="adm-card-sub">Clientes con más monto por cobrar</p>
+        {/* Clientes que más deben (barras rojas) */}
         {topDeudores.length === 0 ? <p className="adm-sub">No hay clientes con pagos pendientes.</p> : (
           <div className="adm-bars">
             {topDeudores.map((d) => (

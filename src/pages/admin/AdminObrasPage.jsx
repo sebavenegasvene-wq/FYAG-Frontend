@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getObras } from "../../api/obras";
 import AdminLayout from "./AdminLayout";
 
+// OBRAS PARA EL ADMINISTRADOR: solo lectura (sin montos ni cambios). Sirve para dar soporte.
 const ESTADOS = [
   { value: "", label: "Todos los estados" },
   { value: "EN_PROCESO", label: "En proceso" },
@@ -11,9 +12,11 @@ const ESTADOS = [
 ];
 const ESTADO_LABEL = Object.fromEntries(ESTADOS.filter((e) => e.value).map((e) => [e.value, e.label]));
 // Colores estandarizados del sistema: verde = finalizada, rojo = cancelada/alerta
+// Color de la etiqueta según el estado
 const ESTADO_CLASE = { EN_PROCESO: "info", FINALIZADA: "ok", SUSPENDIDA: "warn", CANCELADA: "bad" };
 const fecha = (f) => (f ? new Date(`${f}T00:00:00`).toLocaleDateString("es-CL") : "—");
 
+// Ventana con el detalle de una obra
 function DetalleModal({ obra, onClose }) {
   return (
     <div className="adm-overlay" onMouseDown={(ev) => ev.target === ev.currentTarget && onClose()}>
@@ -34,6 +37,7 @@ function DetalleModal({ obra, onClose }) {
   );
 }
 
+// Pantalla con la lista de obras
 export default function AdminObrasPage() {
   const [pagina, setPagina] = useState(0);
   const [data, setData] = useState({ content: [], page: { totalPages: 0, totalElements: 0 } });
@@ -43,6 +47,7 @@ export default function AdminObrasPage() {
   const [error, setError] = useState(null);
   const [detalle, setDetalle] = useState(null);
 
+  // Pide las obras al backend (10 por página)
   const cargar = useCallback(async () => {
     setCargando(true);
     setError(null);
@@ -59,6 +64,7 @@ export default function AdminObrasPage() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
+  // Aplica el buscador de texto
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLocaleLowerCase("es");
     if (!q) return data.content;
@@ -86,6 +92,7 @@ export default function AdminObrasPage() {
           <table className="adm-table">
             <thead><tr><th>OBRA</th><th>CLIENTE</th><th>SERVICIO</th><th>TÉCNICO</th><th>INICIO</th><th>ESTADO</th><th>DETALLE</th></tr></thead>
             <tbody>
+              {/* Mensajes de carga/vacío y una fila por obra */}
               {cargando && <tr><td className="adm-empty" colSpan="7">Cargando obras...</td></tr>}
               {!cargando && visibles.length === 0 && <tr><td className="adm-empty" colSpan="7">No hay obras con esos filtros.</td></tr>}
               {!cargando && visibles.map((o) => (
@@ -103,6 +110,7 @@ export default function AdminObrasPage() {
           </table>
         </div>
 
+        {/* Paginación */}
         <div className="adm-pager">
           <span>{data.page?.totalElements ?? 0} obra(s) · Página {totalPaginas ? pagina + 1 : 0} de {totalPaginas}</span>
           <div>
@@ -111,6 +119,7 @@ export default function AdminObrasPage() {
           </div>
         </div>
       </section>
+      {/* Ventana de detalle */}
       {detalle && <DetalleModal obra={detalle} onClose={() => setDetalle(null)} />}
     </AdminLayout>
   );

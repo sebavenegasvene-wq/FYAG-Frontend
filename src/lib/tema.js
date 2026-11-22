@@ -1,7 +1,9 @@
 // Tema de la interfaz: paleta de color + modo claro/oscuro. Se guarda por dispositivo en localStorage.
+// Nombre con el que se guarda el tema en el navegador (localStorage)
 const CLAVE = "fyag.tema";
 
 // Cada paleta define el color de acento; los colores de estado (verde/rojo/ámbar/azul) no cambian (HU-17).
+// Lista de paletas de color disponibles (id interno, nombre visible y dos colores de muestra)
 export const PALETAS = [
   { id: "slate", nombre: "Gris (predeterminada)", muestra: ["#a0a0a0", "#3f4756"] },
   { id: "oceano", nombre: "Océano", muestra: ["#38bdf8", "#0369a1"] },
@@ -12,8 +14,10 @@ export const PALETAS = [
   { id: "contraste", nombre: "Alto contraste", muestra: ["#ffe600", "#000000"] },
 ];
 
+// Tema que se usa si el usuario nunca eligió uno
 const POR_DEFECTO = { paleta: "slate", modo: "dark" };
 
+// Lee el tema guardado; si no existe o está dañado, usa el tema por defecto
 export function leerTema() {
   try {
     const t = JSON.parse(localStorage.getItem(CLAVE) ?? "{}");
@@ -26,6 +30,7 @@ export function leerTema() {
   }
 }
 
+// Aplica el tema: pone la paleta y el modo como atributos del <html>, y el CSS cambia los colores según eso
 export function aplicarTema({ paleta, modo }) {
   const el = document.documentElement;
   el.dataset.paleta = paleta;
@@ -35,9 +40,11 @@ export function aplicarTema({ paleta, modo }) {
   if (meta) meta.setAttribute("content", getComputedStyle(el).getPropertyValue("--bg").trim() || "#121212");
 }
 
+// Guarda el tema elegido y lo aplica de inmediato
 export function guardarTema(tema) {
   try { localStorage.setItem(CLAVE, JSON.stringify(tema)); } catch { /* almacenamiento no disponible */ }
   aplicarTema(tema);
 }
 
+// Se llama una vez al iniciar la app (desde main.jsx)
 export const initTema = () => aplicarTema(leerTema());

@@ -7,7 +7,9 @@ import { lista } from "../lib/datos";
 import { erroresPorCampo, mensajeError } from "../lib/errores";
 
 // HU-08: listas paramétricas editables sin depender de un desarrollador.
+// TIPOS DE SERVICIO (HU-08): el Supervisor crea, edita y desactiva categorías de obra sin necesitar un programador.
 export default function TiposServicioPage() {
+  // Estados: lista, formulario de edición, confirmación
   const [tipos, setTipos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -19,6 +21,7 @@ export default function TiposServicioPage() {
   const [errorConf, setErrorConf] = useState(null);
   const { aviso, mostrar } = useToast();
 
+  // Pide todos los tipos (también los desactivados)
   const cargar = useCallback(async () => {
     setCargando(true); setError(null);
     try { setTipos(lista(await getTiposServicio(true))); }
@@ -27,8 +30,10 @@ export default function TiposServicioPage() {
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
 
+  // Abre el formulario: vacío para crear o con datos para editar
   const abrir = (t = {}) => { setEdicion(t); setNombre(t.nombre ?? ""); setErrorNombre(null); };
 
+  // Valida el nombre (obligatorio, máx. 80) y crea o actualiza
   const guardar = async (ev) => {
     ev.preventDefault();
     if (!nombre.trim()) return setErrorNombre("El nombre es obligatorio");
@@ -43,6 +48,7 @@ export default function TiposServicioPage() {
     finally { setGuardando(false); }
   };
 
+  // Activa o desactiva un tipo (no se borra, así las obras antiguas lo conservan)
   const cambiarEstado = async () => {
     setGuardando(true); setErrorConf(null);
     try {
@@ -53,6 +59,7 @@ export default function TiposServicioPage() {
     finally { setGuardando(false); }
   };
 
+  // Columnas de la tabla: nombre, estado y acciones
   const columnas = [
     { label: "Tipo de servicio", render: (t) => <strong>{t.nombre}</strong> },
     { label: "Estado", render: (t) => <Pill tono={t.activo ? "ok" : "bad"}>{t.activo ? "Vigente" : "Desactivado"}</Pill> },
@@ -71,6 +78,7 @@ export default function TiposServicioPage() {
         <Alert>{error}</Alert>
         <DataTable columnas={columnas} filas={tipos} cargando={cargando} vacio="Aún no hay tipos de servicio. Crea el primero." />
       </section>
+      {/* Ventana para crear o editar */}
       {edicion && (
         <Modal titulo={edicion.id ? "Editar tipo de servicio" : "Nuevo tipo de servicio"} onClose={() => setEdicion(null)} onSubmit={guardar} bloquear={guardando}>
           <Field label="Nombre" name="nombre" error={errorNombre} hint="Ej: Mantención, Climatización, Emergencia">
@@ -82,6 +90,7 @@ export default function TiposServicioPage() {
           </div>
         </Modal>
       )}
+      {/* Ventana de confirmación para activar o desactivar */}
       {confirmar && (
         <ConfirmModal titulo={confirmar.activo ? "Desactivar tipo de servicio" : "Activar tipo de servicio"}
           texto={confirmar.activo ? `«${confirmar.nombre}» dejará de aparecer en obras nuevas. Las obras existentes lo conservan.` : `«${confirmar.nombre}» volverá a estar disponible para obras nuevas.`}
