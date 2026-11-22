@@ -4,8 +4,10 @@ import { getUsuarios } from "../../api/usuarios";
 import AdminLayout from "./AdminLayout";
 import { clp } from "./formato";
 
+// DASHBOARD DEL ADMINISTRADOR: solo datos operativos (obras y usuarios). No ve cifras financieras.
 const total = (pagina) => pagina?.page?.totalElements ?? pagina?.content?.length ?? 0;
 
+// Tarjeta con un indicador
 function Kpi({ titulo, valor, detalle, tono }) {
   return (
     <article className={`adm-card adm-kpi ${tono}`}>
@@ -16,14 +18,17 @@ function Kpi({ titulo, valor, detalle, tono }) {
   );
 }
 
+// Pantalla del dashboard del Administrador
 export default function AdminDashboardPage() {
   // El Admin no tiene acceso a cifras financieras: no se llama a /dashboard.
   const fin = null;
   const sinAcceso = true;
+  // Datos operativos cargados
   const [op, setOp] = useState(null);            // datos operativos
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
 
+  // Pide al backend cuántas obras hay por estado y cuántos usuarios activos; size:1 porque solo interesa el total
   const cargar = useCallback(async () => {
     setCargando(true);
     setError(null);
@@ -52,6 +57,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
+  // Muestra — mientras se cargan los datos
   const v = (valor) => (cargando ? "—" : valor);
   const obrasEnProceso = fin?.obrasEnProceso ?? op?.enProceso;
 
@@ -59,6 +65,7 @@ export default function AdminDashboardPage() {
     <AdminLayout title="Dashboard" subtitle="Indicadores del negocio, actualizados al cargar la vista.">
       {error && <div className="adm-alert" role="alert">{error}</div>}
 
+      {/* Indicadores principales (los financieros están ocultos para este rol) */}
       <section className="adm-kpis" aria-label="Indicadores principales">
         {!sinAcceso && <Kpi titulo="VENTAS DEL MES" tono="ok" valor={v(clp(fin?.ventasDelMes))} detalle="Facturas pagadas en el mes" />}
         {!sinAcceso && <Kpi titulo="PRESUPUESTOS APROBADOS" tono="ok" valor={v(fin?.presupuestosAprobados)} detalle="Habilitan la creación de obras" />}
@@ -67,6 +74,7 @@ export default function AdminDashboardPage() {
         {!sinAcceso && <Kpi titulo="CUENTAS POR COBRAR" tono="bad" valor={v(clp(fin?.cuentasPorCobrar))} detalle="Facturas pendientes de pago" />}
       </section>
 
+      {/* Resumen de obras y usuarios */}
       <h2 className="adm-section">Resumen operativo</h2>
       <section className="adm-kpis" aria-label="Resumen operativo">
         <Kpi titulo="OBRAS FINALIZADAS" tono="ok" valor={v(op?.finalizadas)} detalle="Trabajo terminado" />

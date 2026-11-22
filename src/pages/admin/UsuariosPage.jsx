@@ -6,14 +6,17 @@ import {
 import { useForm } from "../../hooks/useForm";
 import AdminLayout from "./AdminLayout";
 
+// USUARIOS (solo Administrador): crear cuentas, cambiar perfil, desactivar, desbloquear y resetear contraseña. Las cuentas nunca se borran, solo se desactivan.
 const ROLES = [
   { value: "GERENCIA", label: "Gerencia" },
   { value: "FINANZAS", label: "Finanzas" },
   { value: "SUPERVISOR", label: "Supervisor de Obras" },
   { value: "TECNICO", label: "Técnico" },
 ];
+// Nombre visible de cada rol
 const ROLE_LABEL = { ADMIN: "Administrador", ...Object.fromEntries(ROLES.map((r) => [r.value, r.label])) };
 
+// Genera una contraseña temporal aleatoria y segura (sin letras que se confunden como l, O, 0, 1)
 const generarPassword = (largo = 12) => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
   const valores = crypto.getRandomValues(new Uint32Array(largo));
@@ -21,6 +24,7 @@ const generarPassword = (largo = 12) => {
 };
 
 // Mensaje legible a partir del ProblemDetail del backend
+// Mensaje legible a partir del error del backend
 const mensajeError = (error) => {
   const data = error.response?.data;
   if (error.response?.status === 403) return "No tienes permisos para esta acción.";
@@ -28,13 +32,16 @@ const mensajeError = (error) => {
 };
 
 // Errores por campo que devuelve @Valid (por si vienen en data.errores / data.errors)
+// Errores de validación por campo
 const erroresPorCampo = (error) => error.response?.data?.errores ?? error.response?.data?.errors ?? {};
 
+// Valores iniciales del formulario de nueva cuenta
 const FORM_INICIAL = {
   nombre: "", apellido: "", rut: "", email: "", telefono: "",
   username: "", password: "", role: "TECNICO",
 };
 
+// Validaciones del formulario: nombre, apellido, RUT, correo, usuario (4 a 20 caracteres) y contraseña (8 a 72)
 function validar(f) {
   const e = {};
   if (!f.nombre.trim()) e.nombre = "El nombre es obligatorio";
@@ -48,6 +55,7 @@ function validar(f) {
   return e;
 }
 
+// Campo reutilizable del formulario: etiqueta + campo + ayuda o error
 function Campo({ label, name, form, errors, onChange, type = "text", wide, hint, children }) {
   return (
     <div className={`adm-field${wide ? " wide" : ""}`}>
@@ -62,11 +70,13 @@ function Campo({ label, name, form, errors, onChange, type = "text", wide, hint,
   );
 }
 
+// Ventana para crear una cuenta. La contraseña es temporal: el empleado debe cambiarla al entrar
 function CrearUsuarioModal({ onClose, onCreado }) {
   const { form, errors, setErrors, handleChange, fillForm } = useForm(FORM_INICIAL);
   const [guardando, setGuardando] = useState(false);
   const [errorServidor, setErrorServidor] = useState(null);
 
+  // Valida y crea la cuenta en el backend
   const enviar = async (event) => {
     event.preventDefault();
     const e = validar(form);
@@ -97,6 +107,7 @@ function CrearUsuarioModal({ onClose, onCreado }) {
         {errorServidor && <div className="adm-alert" role="alert">{errorServidor}</div>}
 
         <div className="adm-form-grid">
+          {/* Campos del formulario */}
           <Campo label="Nombre" name="nombre" form={form} errors={errors} onChange={handleChange} />
           <Campo label="Apellido" name="apellido" form={form} errors={errors} onChange={handleChange} />
           <Campo label="RUT" name="rut" form={form} errors={errors} onChange={handleChange} hint="Sin puntos y con guion: 12345678-5" />
@@ -130,6 +141,7 @@ function CrearUsuarioModal({ onClose, onCreado }) {
 
 // Muestra la clave temporal una sola vez (el backend no la vuelve a entregar)
 function CredencialesModal({ username, password, titulo, onClose }) {
+  // Permite copiar la contraseña al portapapeles
   const [copiado, setCopiado] = useState(false);
   const copiar = async () => {
     try { await navigator.clipboard.writeText(password); setCopiado(true); } catch { /* el usuario puede copiarla a mano */ }
@@ -150,6 +162,7 @@ function CredencialesModal({ username, password, titulo, onClose }) {
   );
 }
 
+// Ventana para cambiar el perfil de un usuario (se aplica de inmediato)
 function CambiarRolModal({ usuario, onClose, onGuardado }) {
   const [role, setRole] = useState(usuario.role);
   const [guardando, setGuardando] = useState(false);
@@ -191,6 +204,7 @@ function CambiarRolModal({ usuario, onClose, onGuardado }) {
   );
 }
 
+// Ventana de confirmación para desactivar, desbloquear o resetear
 function ConfirmarModal({ titulo, texto, confirmar, peligro, onCancel, onConfirm, cargando, error }) {
   return (
     <div className="adm-overlay" onMouseDown={(ev) => ev.target === ev.currentTarget && onCancel()}>
@@ -209,7 +223,9 @@ function ConfirmarModal({ titulo, texto, confirmar, peligro, onCancel, onConfirm
   );
 }
 
+// Pantalla principal de usuarios
 export default function UsuariosPage() {
+  // Estados: lista, filtros y qué ventana está abierta
   const [pagina, setPagina] = useState(0);
   const [data, setData] = useState({ content: [], page: { totalPages: 0, totalElements: 0 } });
   const [cargando, setCargando] = useState(true);
@@ -226,6 +242,7 @@ export default function UsuariosPage() {
   const [errorConfirm, setErrorConfirm] = useState(null);
   const [aviso, setAviso] = useState(null);
 
+  // Pide los usuarios al backend con los filtros de perfil y estado (10 por página)
   const cargar = useCallback(async () => {
     setCargando(true);
     setError(null);
@@ -244,6 +261,7 @@ export default function UsuariosPage() {
   useEffect(() => { cargar(); }, [cargar]);
 
   useEffect(() => {
+    // El aviso verde se oculta solo a los 3,5 segundos
     if (!aviso) return undefined;
     const t = setTimeout(() => setAviso(null), 3500);
     return () => clearTimeout(t);
@@ -257,6 +275,7 @@ export default function UsuariosPage() {
       `${u.nombre} ${u.apellido} ${u.username} ${u.rut} ${u.email}`.toLocaleLowerCase("es").includes(q));
   }, [data, busqueda]);
 
+  // Ejecuta la acción confirmada: activar/desactivar, desbloquear o resetear contraseña (esta última muestra la clave nueva una sola vez)
   const ejecutarConfirmacion = async () => {
     const { tipo, usuario } = confirmacion;
     setProcesando(true);
@@ -281,6 +300,7 @@ export default function UsuariosPage() {
     }
   };
 
+  // Arma el texto de la ventana de confirmación según la acción
   const textoConfirmacion = () => {
     if (!confirmacion) return {};
     const { tipo, usuario: u } = confirmacion;
@@ -297,6 +317,7 @@ export default function UsuariosPage() {
 
   return (
     <AdminLayout title="Gestión de usuarios" subtitle="Solo el Administrador crea, modifica y desactiva cuentas. No existe autorregistro y las cuentas nunca se eliminan.">
+      {/* Filtros y botón para crear cuenta */}
       <section className="adm-card">
         <div className="adm-toolbar">
           <div className="adm-filters">
@@ -325,6 +346,7 @@ export default function UsuariosPage() {
             <tbody>
               {cargando && <tr><td className="adm-empty" colSpan="7">Cargando usuarios...</td></tr>}
               {!cargando && visibles.length === 0 && <tr><td className="adm-empty" colSpan="7">No se encontraron usuarios.</td></tr>}
+              {/* Una fila por usuario; el ADMIN aparece como 'Protegido' (sin acciones) */}
               {!cargando && visibles.map((u) => {
                 const esAdmin = u.role === "ADMIN"; // el backend protege al ADMIN: sin acciones
                 return (
@@ -358,6 +380,7 @@ export default function UsuariosPage() {
           </table>
         </div>
 
+        {/* Paginación */}
         <div className="adm-pager">
           <span>{data.page?.totalElements ?? 0} usuario(s) · Página {totalPaginas ? pagina + 1 : 0} de {totalPaginas}</span>
           <div>
@@ -367,6 +390,7 @@ export default function UsuariosPage() {
         </div>
       </section>
 
+      {/* Ventanas emergentes: crear cuenta, mostrar credenciales, cambiar perfil y confirmar acción */}
       {modalCrear && (
         <CrearUsuarioModal
           onClose={() => setModalCrear(false)}

@@ -1,4 +1,5 @@
 
+// HOOK useForm: maneja los campos de un formulario y sus errores, para no repetir este código en cada pantalla.
 import { useState } from "react";
  
 export function useForm(initialValues) {

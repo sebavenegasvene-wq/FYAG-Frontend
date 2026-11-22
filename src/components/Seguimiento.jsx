@@ -4,11 +4,13 @@ import { mensajeError } from "../lib/errores";
 import { fecha } from "../lib/format";
 import { IconCerrar, IconCheck, IconPausa, IconReloj } from "./icons";
 
+// SEGUIMIENTO: línea de tiempo tipo 'rastreo de paquete'. Icono y color de cada tipo de paso:
 const ICONO = { COMPLETADO: <IconCheck />, ACTUAL: <IconReloj />, PAUSADO: <IconPausa />, ERROR: <IconCerrar />, PENDIENTE: null };
 const TONO = { COMPLETADO: "ok", ACTUAL: "info", PAUSADO: "warn", ERROR: "bad", PENDIENTE: "" };
 
 // Línea de tiempo del ciclo presupuesto > obra > factura > pago, con el paso actual destacado.
 // `cargar` es una función que devuelve la promesa del seguimiento (obra o presupuesto).
+// Recibe 'cargar' (función que pide los datos) y dibuja el resumen, la barra de avance y la lista de pasos
 export default function Seguimiento({ cargar }) {
   const [seg, setSeg] = useState(null);
   const [error, setError] = useState(null);
@@ -22,6 +24,7 @@ export default function Seguimiento({ cargar }) {
   if (error) return <p className="adm-sub">{error}</p>;
   if (!seg) return <p className="adm-sub">Cargando seguimiento...</p>;
 
+  // Cuántos pasos están completados y cuál es el paso actual
   const hechos = seg.pasos.filter((p) => p.estado === "COMPLETADO").length;
   const actual = seg.pasos.find((p) => p.estado !== "COMPLETADO" && p.estado !== "PENDIENTE");
 
@@ -54,6 +57,7 @@ export default function Seguimiento({ cargar }) {
 }
 
 // Atajo para mostrar el seguimiento de una obra por su id
+// Atajo: seguimiento de una obra por su id
 export function SeguimientoDeObra({ obraId }) {
   const cargar = useCallback(() => getSeguimientoObra(obraId), [obraId]);
   return <Seguimiento cargar={cargar} />;

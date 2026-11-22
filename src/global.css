@@ -1,3 +1,4 @@
+/* ESTILOS GLOBALES: reglas base y variables de color para cada paleta y para el modo claro/oscuro. */
 @import "./styles/app.css";
 
 :root { --fs: 1; }

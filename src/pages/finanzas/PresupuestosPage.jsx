@@ -12,11 +12,15 @@ import { clp, fecha } from "../../lib/format";
 import { ESTADO_PRESUPUESTO } from "../../lib/roles";
 import PresupuestoForm from "./PresupuestoForm";
 
+// PRESUPUESTOS: Finanzas crea y aprueba; los de monto alto (sobre el umbral) solo los decide Gerencia.
 const FILTROS = [{ value: "", label: "Todos los estados" }, ...Object.entries(ESTADO_PRESUPUESTO).map(([value, e]) => ({ value, label: e.label }))];
 
+// Ventana con el detalle de un presupuesto, su seguimiento y los botones de acción
 function Detalle({ id, puedeDecidir, puedeEditar, onClose, onAprobar, onRechazar, onEditar, onPdf }) {
   const [p, setP] = useState(null);
   const [error, setError] = useState(null);
+  // Pide los pasos del seguimiento
+  // Pide los presupuestos al backend
   const cargarSeguimiento = useCallback(() => getSeguimientoPresupuesto(id), [id]);
   useEffect(() => { let a = true; getPresupuesto(id).then((r) => a && setP(r)).catch((e) => a && setError(mensajeError(e))); return () => { a = false; }; }, [id]);
 
@@ -42,6 +46,7 @@ function Detalle({ id, puedeDecidir, puedeEditar, onClose, onAprobar, onRechazar
             { label: "Monto", num: true, render: (i) => clp(i.monto) },
           ]} filas={p.items ?? []} vacio="Sin ítems." />
           {p.estado === "APROBADO" && <p className="adm-sub" style={{ marginTop: 12 }}>Aprobado: los montos están bloqueados y el PDF institucional está disponible.</p>}
+          {/* Botones según el estado y los permisos: Descargar PDF (aprobado), Editar, Rechazar y Aprobar (pendiente) */}
           <div className="adm-modal-actions">
             {p.estado === "APROBADO" && <button className="adm-btn" onClick={() => onPdf(p)}>Descargar PDF</button>}
             {p.estado === "PENDIENTE" && puedeEditar && <button className="adm-btn" onClick={() => onEditar(p)}>Editar</button>}
@@ -55,9 +60,12 @@ function Detalle({ id, puedeDecidir, puedeEditar, onClose, onAprobar, onRechazar
   );
 }
 
+// Pantalla principal de presupuestos
 export default function PresupuestosPage() {
   const rol = getRole();
+  // Finanzas puede crear/editar; Gerencia solo revisar y decidir los de alto valor
   const esFinanzas = rol === "FINANZAS";
+  // Estados: lista, filtro, ventana abierta y acción en curso
   const [pagina, setPagina] = useState(0);
   const [data, setData] = useState(paginaVacia);
   const [estado, setEstado] = useState("");
@@ -83,11 +91,13 @@ export default function PresupuestosPage() {
   }, [pagina, estado]);
   useEffect(() => { cargar(); }, [cargar]);
 
+  // Descarga el PDF institucional del presupuesto aprobado
   const descargarPdf = async (p) => {
     try { descargarBlob(await getPresupuestoPdf(p.id), `${p.numeroPresupuesto ?? `presupuesto-${p.id}`}.pdf`); }
     catch (e) { mostrar(mensajeError(e, "No se pudo generar el PDF.")); }
   };
 
+  // Aprueba o rechaza (el rechazo exige motivo). Si el backend responde 403 al aprobar es porque supera el monto umbral
   const ejecutar = async () => {
     const { tipo, p } = accion;
     if (tipo === "rechazar" && !motivo.trim()) return setErrorAccion("Escribe el motivo del rechazo.");
@@ -108,6 +118,7 @@ export default function PresupuestosPage() {
     } finally { setProcesando(false); }
   };
 
+  // Columnas de la tabla
   const columnas = [
     { label: "N°", render: (p) => <strong>{p.numeroPresupuesto}</strong> },
     { label: "Cliente", render: (p) => p.clienteRazonSocial ?? p.cliente?.razonSocial ?? "—" },
@@ -121,6 +132,7 @@ export default function PresupuestosPage() {
     <AppLayout title="Presupuestos"
       subtitle={esFinanzas ? "Registra cotizaciones y apruébalas. Los montos sobre el umbral los decide Gerencia." : "Revisa y decide los presupuestos de alto valor."}
       actions={esFinanzas && <button className="adm-btn adm-btn-primary" onClick={() => setFormulario({})}>＋ Nuevo presupuesto</button>}>
+      {/* Filtro, tabla y paginación */}
       <section className="adm-card">
         <div className="adm-toolbar">
           <div className="adm-filters">
@@ -134,12 +146,15 @@ export default function PresupuestosPage() {
         <Pager data={data} pagina={pagina} setPagina={setPagina} unidad="presupuesto(s)" />
       </section>
 
+      {/* Ventana de detalle */}
       {verId && !accion && !formulario && (
         <Detalle id={verId} puedeDecidir={esFinanzas || rol === "GERENCIA"} puedeEditar={esFinanzas} onClose={() => setVerId(null)}
           onPdf={descargarPdf} onEditar={(p) => setFormulario({ id: p.id })}
           onAprobar={(p) => { setErrorAccion(null); setAccion({ tipo: "aprobar", p }); }} onRechazar={(p) => { setErrorAccion(null); setMotivo(""); setAccion({ tipo: "rechazar", p }); }} />
       )}
+      {/* Ventana de crear/editar */}
       {formulario && <PresupuestoForm presupuestoId={formulario.id} onClose={() => setFormulario(null)} onGuardado={(m) => { setFormulario(null); setVerId(null); mostrar(m); cargar(); }} />}
+      {/* Ventana de confirmación para aprobar o rechazar */}
       {accion && (
         <ConfirmModal
           titulo={accion.tipo === "aprobar" ? `Aprobar presupuesto ${accion.p.numeroPresupuesto}` : `Rechazar presupuesto ${accion.p.numeroPresupuesto}`}

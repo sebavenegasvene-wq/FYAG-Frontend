@@ -14,10 +14,13 @@ import IncidenciasObra from "../../components/IncidenciasObra";
 import { ESTADOS_ABIERTOS } from "../../lib/incidencias";
 
 // Transiciones válidas según la máquina de estados (HU-09)
+// MÁQUINA DE ESTADOS de la obra: desde cada estado, a cuáles se puede pasar (EN_PROCESO → FINALIZADA/SUSPENDIDA/CANCELADA, etc.)
 const TRANSICIONES = { EN_PROCESO: ["FINALIZADA", "SUSPENDIDA", "CANCELADA"], SUSPENDIDA: ["EN_PROCESO", "CANCELADA"], FINALIZADA: [], CANCELADA: [] };
 
 // Hallazgo UX 2: el botón dice a qué estado pasa la obra y se pide confirmación antes de cambiar.
+// Texto claro del botón: dice a qué estado pasa la obra
 const textoBoton = (actual, destino) => (actual === "SUSPENDIDA" && destino === "EN_PROCESO" ? "Reanudar obra" : `Pasar a ${ESTADO_OBRA[destino].label}`);
+// Advertencia que se muestra antes de confirmar cada cambio de estado
 const ADVERTENCIA = {
   FINALIZADA: "Se revisará que la obra tenga técnico asignado y costos reales (materiales y horas). Si falta algo, el sistema no la finalizará.",
   SUSPENDIDA: "La obra quedará pausada. Debes indicar el motivo; quedará en el historial.",
@@ -25,6 +28,7 @@ const ADVERTENCIA = {
   EN_PROCESO: "La obra volverá a estar en ejecución.",
 };
 
+// Da formato a los datos de rentabilidad (porcentaje, horas o pesos)
 const formatoRentab = (clave, valor) => {
   if (typeof valor !== "number") return String(valor);
   if (/porcent|margen/i.test(clave)) return `${valor.toLocaleString("es-CL", { maximumFractionDigits: 1 })} %`;
@@ -33,6 +37,7 @@ const formatoRentab = (clave, valor) => {
 };
 
 // HU-07: el supervisor elige otro técnico activo y confirma el cambio de responsable
+// Permite al Supervisor cambiar el técnico responsable de la obra
 function AsignarTecnico({ obra, onCambio }) {
   const [tecnicos, setTecnicos] = useState([]);
   const [tecnicoId, setTecnicoId] = useState("");
@@ -74,6 +79,7 @@ function AsignarTecnico({ obra, onCambio }) {
   );
 }
 
+// Muestra si la obra dio ganancia o pérdida (presupuesto aprobado − costo real). Solo Gerencia y Finanzas
 function Rentabilidad({ obraId }) {
   const [datos, setDatos] = useState(undefined);
   useEffect(() => {
@@ -86,6 +92,7 @@ function Rentabilidad({ obraId }) {
 
   const { diferencia, presupuestoAprobado } = datos;
   const margen = presupuestoAprobado ? (diferencia / presupuestoAprobado) * 100 : null;
+  // Color y mensaje según la diferencia: verde = ganancia, rojo = pérdida
   const veredicto = diferencia > 0
     ? { tono: "ok", titulo: "▲ GANANCIA", detalle: "El costo real está por debajo del presupuesto." }
     : diferencia < 0
@@ -106,9 +113,12 @@ function Rentabilidad({ obraId }) {
   );
 }
 
+// FICHA DE LA OBRA: ventana con todo el detalle, seguimiento, novedades, costos y botones de cambio de estado
 export default function FichaObra({ obra, rol, onClose, onCambio }) {
+  // Qué ve cada rol: el Supervisor gestiona; Gerencia y Finanzas ven rentabilidad
   const esSupervisor = rol === "SUPERVISOR";
   const verRentabilidad = rol === "GERENCIA" || rol === "FINANZAS";
+  // Estados: cambio de estado pendiente de confirmar, motivo, etc.
   const [pendiente, setPendiente] = useState(null); // estado destino a confirmar
   const [motivo, setMotivo] = useState("");
   const [procesando, setProcesando] = useState(false);
@@ -117,6 +127,7 @@ export default function FichaObra({ obra, rol, onClose, onCambio }) {
   const [okCostos, setOkCostos] = useState(false);
   const cargarSeguimiento = useCallback(() => getSeguimientoObra(obra.id), [obra.id]);
 
+  // Confirma el cambio de estado (la suspensión exige motivo). El backend valida el resto de reglas
   const confirmar = async () => {
     if (pendiente === "SUSPENDIDA" && !motivo.trim()) return setError("El motivo de la suspensión es obligatorio.");
     setProcesando(true); setError(null);
@@ -127,6 +138,7 @@ export default function FichaObra({ obra, rol, onClose, onCambio }) {
     finally { setProcesando(false); }
   };
 
+  // Si hay un cambio pendiente, muestra la ventana de confirmación
   if (pendiente) {
     return (
       <ConfirmModal titulo={textoBoton(obra.estado, pendiente)} texto={ADVERTENCIA[pendiente]} confirmar="Sí, confirmar" peligro={pendiente === "CANCELADA"}
@@ -141,14 +153,17 @@ export default function FichaObra({ obra, rol, onClose, onCambio }) {
     );
   }
 
+  // Estados a los que se puede pasar (solo si es Supervisor)
   const destinos = esSupervisor ? TRANSICIONES[obra.estado] ?? [] : [];
   return (
     <Modal titulo={obra.nombre} descripcion={`${obra.clienteRazonSocial ?? ""}`} onClose={onClose} ancho="wide">
       <p style={{ marginTop: -8 }}><EstadoPill mapa={ESTADO_OBRA} valor={obra.estado} /></p>
       {okCostos && <Alert tipo="ok">Costos guardados.</Alert>}
       <h3 className="adm-section">Seguimiento</h3>
+      {/* Línea de tiempo de la obra */}
       <Seguimiento cargar={cargarSeguimiento} />
       <h3 className="adm-section">Novedades de terreno</h3>
+{/* Novedades de terreno */}
 <IncidenciasObra obraId={obra.id} puedeRegistrar={esSupervisor && ESTADOS_ABIERTOS.includes(obra.estado)} />
       <div className="adm-detail">
         <div><h3>TIPO DE SERVICIO</h3><p>{obra.tipoServicioNombre ?? "—"}</p></div>
@@ -159,8 +174,10 @@ export default function FichaObra({ obra, rol, onClose, onCambio }) {
         {obra.motivoSuspension && <div className="wide"><h3>MOTIVO DE SUSPENSIÓN</h3><p>{obra.motivoSuspension}</p></div>}
       </div>
 
+      {/* Rentabilidad: solo Gerencia y Finanzas */}
       {verRentabilidad && <><h3 className="adm-section">Rentabilidad real</h3><Rentabilidad obraId={obra.id} /></>}
 
+      {/* Costos reales: el Supervisor los registra o revisa */}
       {esSupervisor && obra.estado !== "CANCELADA" && (
         <>
           <h3 className="adm-section">Costos reales</h3>
@@ -178,6 +195,7 @@ export default function FichaObra({ obra, rol, onClose, onCambio }) {
         </>
       )}
 
+      {/* Botones para cambiar el estado (uno por cada estado permitido) */}
       {destinos.length > 0 && !verCostos && (
         <>
           <hr className="adm-sep" />

@@ -10,8 +10,11 @@ import { erroresPorCampo, mensajeError } from "../../lib/errores";
 import { hoy } from "../../lib/format";
 
 // Hallazgo UX 1: el supervisor NO escribe montos; elige de una lista de presupuestos aprobados sin obra.
+// NUEVA OBRA: el Supervisor NO escribe montos, elige de una lista de presupuestos ya aprobados (evita errores de digitación).
 export default function NuevaObraModal({ onClose, onCreada }) {
+  // Campos del formulario
   const { form, errors, setErrors, handleChange } = useForm({ presupuestoId: "", nombre: "", descripcion: "", tipoServicioId: "", tecnicoId: "", fechaInicio: hoy() });
+  // Listas para los menús desplegables: presupuestos aprobados, tipos de servicio y técnicos
   const [opciones, setOpciones] = useState({ presupuestos: [], tipos: [], tecnicos: [] });
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -19,6 +22,7 @@ export default function NuevaObraModal({ onClose, onCreada }) {
 
   useEffect(() => {
     let activo = true;
+    // Carga las tres listas al mismo tiempo al abrir la ventana
     Promise.all([getAprobados(), getTiposServicio(false), getTecnicos()])
       .then(([p, t, tec]) => activo && setOpciones({ presupuestos: lista(p), tipos: lista(t), tecnicos: lista(tec) }))
       .catch((e) => activo && setErrorServidor(mensajeError(e, "No se pudieron cargar las listas.")))
@@ -26,6 +30,7 @@ export default function NuevaObraModal({ onClose, onCreada }) {
     return () => { activo = false; };
   }, []);
 
+  // Valida que no falte nada y crea la obra en el backend
   const enviar = async (ev) => {
     ev.preventDefault();
     const e = {};
@@ -47,14 +52,18 @@ export default function NuevaObraModal({ onClose, onCreada }) {
     finally { setGuardando(false); }
   };
 
+  // true si no hay presupuestos aprobados disponibles
   const sinPresupuestos = !cargando && opciones.presupuestos.length === 0;
+  // Muestra el nombre completo del técnico (o su usuario)
   const nombreTec = (t) => (t.nombre ? `${t.nombre} ${t.apellido ?? ""}`.trim() : t.username);
 
   return (
     <Modal titulo="Nueva obra" descripcion="La obra nace de un presupuesto aprobado. El cliente se toma del presupuesto." onClose={onClose} onSubmit={enviar} bloquear={guardando}>
       <Alert>{errorServidor}</Alert>
+      {/* Aviso si no hay presupuestos aprobados */}
       {sinPresupuestos && <div className="adm-notice">No hay presupuestos aprobados pendientes de obra. Finanzas debe aprobar un presupuesto primero.</div>}
       <div className="adm-form-grid">
+        {/* Campos del formulario: cada uno es un menú desplegable o un campo de texto */}
         <Field label="Presupuesto aprobado" name="presupuestoId" error={errors.presupuestoId} wide>
           <select id="f-presupuestoId" name="presupuestoId" className={`adm-select${errors.presupuestoId ? " error" : ""}`} value={form.presupuestoId} onChange={handleChange} disabled={cargando}>
             <option value="">{cargando ? "Cargando..." : "Selecciona un presupuesto"}</option>

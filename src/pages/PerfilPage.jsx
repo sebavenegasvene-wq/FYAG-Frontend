@@ -8,21 +8,28 @@ import { useToast } from "../hooks/useToast";
 import { erroresPorCampo, mensajeError } from "../lib/errores";
 import { ROLE_LABEL } from "../lib/roles";
 
+// MI PERFIL: ver y editar mis datos y cambiar mi contraseña.
 const DATOS_VACIOS = { nombre: "", apellido: "", email: "", telefono: "" };
 
 // Mis datos: PUT /usuarios/me (endpoint 1). Solo nombre, apellido, correo y teléfono;
 // usuario, RUT y perfil los gestiona el Administrador.
+// Tarjeta con mis datos. Solo se pueden editar nombre, apellido, correo y teléfono; usuario, RUT y perfil los define el Administrador
 function DatosCuenta({ perfil, onActualizado, mostrar }) {
   const { form, errors, setErrors, handleChange, fillForm } = useForm(DATOS_VACIOS);
+  // 'editando' decide si se ven los datos o el formulario
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
 
+  // Copia los datos del perfil al formulario
+  // Pide el perfil al backend y mantiene al día los datos guardados en el navegador
   const cargarForm = (p) => fillForm({ nombre: p.nombre ?? "", apellido: p.apellido ?? "", email: p.email ?? "", telefono: p.telefono ?? "" });
   useEffect(() => { if (perfil) cargarForm(perfil); }, [perfil]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Descarta los cambios y vuelve a mostrar los datos
   const cancelar = () => { cargarForm(perfil); setErrors({}); setError(null); setEditando(false); };
 
+  // Valida nombre, apellido y correo, y guarda en el backend
   const guardar = async (ev) => {
     ev.preventDefault();
     const e = {};
@@ -40,11 +47,13 @@ function DatosCuenta({ perfil, onActualizado, mostrar }) {
     finally { setGuardando(false); }
   };
 
+  // Dibuja un campo de texto del formulario
   const campo = (name, label, tipo = "text") => (
     <Field label={label} name={name} error={errors[name]}>
       <input id={`f-${name}`} name={name} type={tipo} className={`adm-input${errors[name] ? " error" : ""}`} value={form[name]} onChange={handleChange} autoComplete="off" />
     </Field>
   );
+  // Dibuja un dato de solo lectura
   const fijo = (titulo, valor) => <div><h3>{titulo}</h3><p>{valor || "—"}</p></div>;
 
   return (
@@ -87,6 +96,7 @@ function DatosCuenta({ perfil, onActualizado, mostrar }) {
 }
 
 // Cambiar contraseña: PATCH /usuarios/me/password (endpoint 2, ya existente).
+// Tarjeta para cambiar la contraseña (misma validación que la pantalla obligatoria)
 function CambioClave({ mostrar }) {
   const { form, errors, setErrors, handleChange, resetForm } = useForm({ passwordActual: "", passwordNueva: "", confirmar: "" });
   const [guardando, setGuardando] = useState(false);
@@ -132,6 +142,7 @@ function CambioClave({ mostrar }) {
   );
 }
 
+// Pantalla completa: junta las dos tarjetas dentro del AppLayout
 export default function PerfilPage() {
   const [perfil, setPerfil] = useState(null);
   const [error, setError] = useState(null);

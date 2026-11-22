@@ -11,12 +11,16 @@ import { ESTADO_OBRA } from "../../lib/roles";
 import FichaObra from "./FichaObra";
 import NuevaObraModal from "./NuevaObraModal";
 
+// OBRAS: lista de obras con filtro y buscador. El Supervisor gestiona (crea y cambia estados); Gerencia y Finanzas solo consultan.
 const FILTROS = [{ value: "", label: "Todos los estados" }, ...Object.entries(ESTADO_OBRA).map(([value, e]) => ({ value, label: e.label }))];
 
 // /supervisor (gestión completa) y /obras (consulta para Gerencia y Finanzas)
+// Pantalla de obras (rutas /supervisor y /obras)
 export default function ObrasPage() {
+  // El rol decide qué botones se muestran
   const rol = getRole();
   const esSupervisor = rol === "SUPERVISOR";
+  // Estados: página, datos, filtros, ventanas abiertas
   const [pagina, setPagina] = useState(0);
   const [data, setData] = useState(paginaVacia);
   const [estado, setEstado] = useState("");
@@ -28,6 +32,7 @@ export default function ObrasPage() {
   const [nueva, setNueva] = useState(false);
   const { aviso, mostrar } = useToast();
 
+  // Pide las obras de la página actual y, aparte, cuántas obras hay en cada estado (para las tarjetas de arriba)
   const cargar = useCallback(async () => {
     setCargando(true); setError(null);
     try {
@@ -42,12 +47,14 @@ export default function ObrasPage() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
+  // Aplica el buscador de texto sobre las obras ya cargadas
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLocaleLowerCase("es");
     if (!q) return data.content;
     return data.content.filter((o) => `${o.nombre} ${o.clienteRazonSocial} ${o.tipoServicioNombre} ${o.tecnicoNombre ?? ""}`.toLocaleLowerCase("es").includes(q));
   }, [data, busqueda]);
 
+  // Columnas de la tabla
   const columnas = [
     { label: "Obra", render: (o) => <strong>{o.nombre}</strong> },
     { label: "Cliente", render: (o) => o.clienteRazonSocial },
@@ -64,6 +71,7 @@ export default function ObrasPage() {
       subtitle={esSupervisor ? "Crea obras desde presupuestos aprobados y controla su ciclo de vida." : "Vista de consulta. Abre la ficha para ver la rentabilidad real de cada obra."}
       actions={esSupervisor && <button className="adm-btn adm-btn-primary" onClick={() => setNueva(true)}>＋ Nueva obra</button>}
     >
+      {/* Tarjetas con la cantidad de obras por estado */}
       <section className="adm-kpis" aria-label="Resumen de obras">
         <Kpi titulo="EN PROCESO" tono="info" valor={conteos?.EN_PROCESO ?? "—"} detalle="En ejecución actualmente" />
         <Kpi titulo="FINALIZADAS" tono="ok" valor={conteos?.FINALIZADA ?? "—"} detalle="Listas para facturar" />
@@ -71,6 +79,7 @@ export default function ObrasPage() {
         <Kpi titulo="CANCELADAS" tono="bad" valor={conteos?.CANCELADA ?? "—"} detalle="Cerradas sin ejecutarse" />
       </section>
 
+      {/* Buscador, filtro de estado, tabla y paginación */}
       <section className="adm-card">
         <div className="adm-toolbar">
           <div className="adm-filters">
@@ -85,7 +94,9 @@ export default function ObrasPage() {
         <Pager data={data} pagina={pagina} setPagina={setPagina} unidad="obra(s)" />
       </section>
 
+      {/* Ventana con la ficha de la obra elegida */}
       {ficha && <FichaObra obra={ficha} rol={rol} onClose={() => setFicha(null)} onCambio={(msg) => { setFicha(null); mostrar(msg); cargar(); }} />}
+      {/* Ventana para crear una obra nueva (solo Supervisor) */}
       {nueva && <NuevaObraModal onClose={() => setNueva(false)} onCreada={(o) => { setNueva(false); mostrar(`Obra «${o?.nombre ?? ""}» creada.`); cargar(); }} />}
       <Toast>{aviso}</Toast>
     </AppLayout>

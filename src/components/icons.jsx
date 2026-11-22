@@ -1,6 +1,8 @@
 // Íconos mínimos en SVG (heredan el color del texto con currentColor)
+// ICONOS: dibujos SVG simples. Heredan el color del texto (currentColor) y comparten estas propiedades base.
 const base = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true, focusable: false };
 
+// Cada IconXxx es un componente que dibuja un icono distinto
 export const IconPaleta = () => (
   <svg {...base}><path d="M12 3a9 9 0 1 0 0 18c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z" /><circle cx="7.5" cy="11" r="1" /><circle cx="10" cy="7" r="1" /><circle cx="15" cy="7" r="1" /></svg>
 );

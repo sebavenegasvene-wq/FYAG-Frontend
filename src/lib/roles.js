@@ -1,3 +1,4 @@
+// ROLES Y PERMISOS EN EL FRONTEND: nombre visible de cada rol
 export const ROLE_LABEL = {
   ADMIN: "Administrador",
   GERENCIA: "Gerencia",
@@ -8,6 +9,7 @@ export const ROLE_LABEL = {
 
 // Menú por perfil: cada usuario ve solo los módulos que le corresponden (RBAC, mínimo privilegio).
 // El backend igualmente valida con @PreAuthorize.
+// Opciones del menú superior según el rol
 export const NAV = {
   ADMIN: [
     { to: "/inicio", label: "Inicio", end: true },
@@ -46,6 +48,7 @@ export const NAV = {
 };
 
 // Colores estandarizados (HU-17): verde = pagado/finalizado, rojo = pendiente/cancelado/emergencia
+// Estados con su texto y color: verde=listo/pagado, rojo=pendiente, azul=en proceso, ámbar=advertencia
 export const ESTADO_OBRA = {
   EN_PROCESO: { label: "En proceso", tono: "info" },
   FINALIZADA: { label: "Finalizada", tono: "ok" },
@@ -63,6 +66,7 @@ export const ESTADO_PAGO = {
 };
 
 // Pantalla de obras de cada perfil (destino de las notificaciones)
+// Pantalla de obras de cada rol (a donde lleva un aviso de la campana)
 export const RUTA_OBRAS = {
   ADMIN: "/admin/obras",
   GERENCIA: "/obras",
@@ -73,7 +77,9 @@ export const RUTA_OBRAS = {
 
 
 // Tarjetas del panel de Inicio: cada perfil ve solo sus módulos.
+// Tarjeta 'Mi perfil' que se repite en todos los roles
 const PERFIL = { to: "/perfil", icono: "👤", titulo: "Mi perfil", texto: "Revisa los datos de tu cuenta, edítalos o cambia tu contraseña.", color: "bad" };
+// Tarjetas de la pantalla de inicio: cada rol ve solo las suyas
 export const MODULOS = {
   ADMIN: [
     { to: "/admin/dashboard", icono: "📊", titulo: "Dashboard", texto: "Ventas del mes, presupuestos, obras en proceso y cuentas por cobrar, más el resumen operativo.", color: "info" },

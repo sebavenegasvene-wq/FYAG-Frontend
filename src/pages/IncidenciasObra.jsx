@@ -4,9 +4,11 @@ import { mensajeError } from "../lib/errores";
 import { TIPO_INCIDENCIA } from "../lib/incidencias";
 import { Alert, EstadoPill } from "./ui";
 
+// (Copia sin usar de components/IncidenciasObra.jsx; la app usa la de components.) Formatea fecha y hora
 const cuando = (iso) => new Date(iso).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" });
 
 // Historial de novedades de una obra y, si corresponde, formulario para dejar una nueva.
+// NOVEDADES DE UNA OBRA: lista de novedades y formulario para agregar una.
 export default function IncidenciasObra({ obraId, puedeRegistrar, onRegistrada }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
@@ -14,12 +16,14 @@ export default function IncidenciasObra({ obraId, puedeRegistrar, onRegistrada }
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
 
+  // Pide las novedades al backend
   const cargar = useCallback(async () => {
     try { setItems(await getIncidencias(obraId)); setError(null); }
     catch (e) { setError(mensajeError(e, "No se pudieron cargar las novedades.")); }
   }, [obraId]);
   useEffect(() => { cargar(); }, [cargar]);
 
+  // Valida que haya texto, lo envía y recarga la lista
   const enviar = async () => {
     if (!texto.trim()) return setError("Escribe qué ocurrió.");
     setEnviando(true); setError(null);

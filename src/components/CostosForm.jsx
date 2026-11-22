@@ -5,13 +5,16 @@ import { Alert, Field } from "./ui";
 
 // Registro de horas técnicas y materiales de una obra (HU-04).
 // ocultarValorHora: el Técnico no ve ni edita montos de mano de obra; el valor existente se conserva al guardar.
+// FORMULARIO DE COSTOS: horas técnicas y materiales de una obra. Sin esto la obra no se puede finalizar.
 export default function CostosForm({ obraId, ocultarValorHora, onGuardado, onCancel }) {
+  // Valores del formulario
   const [form, setForm] = useState({ materiales: "", horasTecnicas: "", valorHora: "" });
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
   const [errores, setErrores] = useState({});
 
+  // Al abrir, carga los costos que ya existan
   useEffect(() => {
     let activo = true;
     getCostos(obraId)
@@ -21,10 +24,13 @@ export default function CostosForm({ obraId, ocultarValorHora, onGuardado, onCan
     return () => { activo = false; };
   }, [obraId]);
 
+  // Actualiza el campo que el usuario está escribiendo y limpia su error
   const cambiar = (e) => { setForm((f) => ({ ...f, [e.target.name]: e.target.value })); setErrores((x) => ({ ...x, [e.target.name]: null })); };
 
+  // Valida los campos y, si están bien, los envía al backend
   const guardar = async (ev) => {
     ev.preventDefault();
+    // Validaciones del lado del cliente (el backend vuelve a validar)
     const e = {};
     if (form.materiales === "" || Number(form.materiales) < 0) e.materiales = "Ingresa el costo de materiales (0 si no hubo)";
     if (form.horasTecnicas === "" || Number(form.horasTecnicas) < 0) e.horasTecnicas = "Ingresa las horas trabajadas";
@@ -41,6 +47,7 @@ export default function CostosForm({ obraId, ocultarValorHora, onGuardado, onCan
     finally { setGuardando(false); }
   };
 
+  // Mientras carga muestra un texto
   if (cargando) return <p className="adm-sub">Cargando costos...</p>;
   return (
     <form onSubmit={guardar} noValidate>

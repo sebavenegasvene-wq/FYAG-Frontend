@@ -10,10 +10,13 @@ import { erroresPorCampo, mensajeError } from "../../lib/errores";
 import { clp, diasAtraso, fecha, hoy } from "../../lib/format";
 import { ESTADO_PAGO } from "../../lib/roles";
 
+// COBRANZAS: emitir facturas, registrar pagos y ver qué clientes deben dinero. Las facturas no se borran: un pago equivocado se anula y queda registrado.
 const FILTROS = [{ value: "", label: "Todas" }, { value: "PENDIENTE", label: "Pendientes" }, { value: "PAGADO", label: "Pagadas" }];
+// Funciones para obtener el nombre de la obra y del cliente aunque el backend los envíe con distinto nombre
 const nombreObra = (f) => pick(f, "obraNombre") ?? f.obra?.nombre ?? `Obra #${f.obraId}`;
 const nombreCliente = (f) => pick(f, "clienteRazonSocial", "razonSocial", "clienteNombre") ?? f.cliente?.razonSocial ?? "—";
 
+// Ventana para emitir una factura (solo sobre obras finalizadas)
 function EmitirModal({ onClose, onEmitida }) {
   const { form, errors, setErrors, handleChange, fillForm } = useForm({ obraId: "", fechaEmision: hoy(), fechaVencimiento: "", monto: "" });
   const [obras, setObras] = useState([]);
@@ -27,6 +30,7 @@ function EmitirModal({ onClose, onEmitida }) {
     return () => { a = false; };
   }, []);
 
+  // Obra elegida en el formulario
   const obraSel = obras.find((o) => String(o.obraId) === String(form.obraId));
 
   // Al elegir la obra, el monto se completa con el saldo por facturar
@@ -35,6 +39,7 @@ function EmitirModal({ onClose, onEmitida }) {
     fillForm({ obraId: ev.target.value, monto: o ? String(o.saldoPorFacturar) : "" });
   };
 
+  // Valida fechas y monto (no puede superar el saldo por facturar) y emite la factura
   const enviar = async (ev) => {
     ev.preventDefault();
     const e = {};
@@ -56,14 +61,17 @@ function EmitirModal({ onClose, onEmitida }) {
   return (
     <Modal titulo="Emitir factura" descripcion="Solo se factura sobre obras finalizadas con saldo pendiente. El N° de factura se asigna automáticamente y queda en estado Pendiente." onClose={onClose} onSubmit={enviar} bloquear={guardando}>
       <Alert>{errorServidor}</Alert>
+      {/* Aviso si no hay obras para facturar */}
       {!cargando && obras.length === 0 && <div className="adm-notice">No hay obras finalizadas con saldo por facturar.</div>}
       <div className="adm-form-grid">
+        {/* Campos: obra, monto, fecha de emisión y de vencimiento */}
         <Field label="Obra finalizada" name="obraId" error={errors.obraId} wide>
           <select id="f-obraId" name="obraId" className={`adm-select${errors.obraId ? " error" : ""}`} value={form.obraId} onChange={elegirObra} disabled={cargando}>
             <option value="">{cargando ? "Cargando..." : "Selecciona una obra"}</option>
             {obras.map((o) => <option key={o.obraId} value={o.obraId}>{o.obraNombre} · {o.clienteRazonSocial}</option>)}
           </select>
         </Field>
+        {/* Resumen de lo presupuestado, lo ya facturado y el saldo */}
         {obraSel && (
           <div className="adm-notice" style={{ gridColumn: "1 / -1" }}>
             Presupuesto {clp(obraSel.montoPresupuesto)} · Ya facturado {clp(obraSel.totalFacturado)} · <strong>Saldo por facturar {clp(obraSel.saldoPorFacturar)}</strong>
@@ -90,10 +98,12 @@ function EmitirModal({ onClose, onEmitida }) {
   );
 }
 
+// Ventana para registrar el pago de una factura
 function PagoModal({ factura, onClose, onGuardado }) {
   const [fechaPago, setFechaPago] = useState(hoy());
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
+  // HU-30: avisa si la fecha de pago es anterior a la de emisión
   const anterior = fechaPago && factura.fechaEmision && fechaPago < factura.fechaEmision; // HU-30
   const guardar = async (ev) => {
     ev.preventDefault();
@@ -106,9 +116,11 @@ function PagoModal({ factura, onClose, onGuardado }) {
   return (
     <Modal titulo={`Registrar pago · factura ${factura.numeroFactura}`} descripcion={`Emitida el ${fecha(factura.fechaEmision)} por ${clp(factura.monto)}.`} onClose={onClose} onSubmit={guardar} bloquear={guardando}>
       <Alert>{error}</Alert>
+      {/* Campo de fecha de pago */}
       <Field label="Fecha de pago" name="fechaPago">
         <input id="f-fechaPago" type="date" className={`adm-input${anterior ? " error" : ""}`} value={fechaPago} onChange={(e) => setFechaPago(e.target.value)} />
       </Field>
+      {/* Aviso de fecha incorrecta (no deja guardar) */}
       {anterior && <div className="adm-notice" role="alert" style={{ marginTop: 12 }}>La fecha de pago es anterior a la fecha de emisión ({fecha(factura.fechaEmision)}). Corrígela para poder guardar.</div>}
       <div className="adm-modal-actions">
         <button type="button" className="adm-btn" onClick={onClose} disabled={guardando}>Cancelar</button>
@@ -118,6 +130,7 @@ function PagoModal({ factura, onClose, onGuardado }) {
   );
 }
 
+// Pestaña de facturas: lista, filtro por estado de pago, emitir, pagar y anular
 function Facturas({ esFinanzas, mostrar }) {
   const [pagina, setPagina] = useState(0);
   const [data, setData] = useState(paginaVacia);
@@ -131,6 +144,7 @@ function Facturas({ esFinanzas, mostrar }) {
   const [procesando, setProcesando] = useState(false);
   const [errorAnular, setErrorAnular] = useState(null);
 
+  // Pide las facturas al backend
   const cargar = useCallback(async () => {
     setCargando(true); setError(null);
     try {
@@ -143,6 +157,7 @@ function Facturas({ esFinanzas, mostrar }) {
   }, [pagina, estadoPago]);
   useEffect(() => { cargar(); }, [cargar]);
 
+  // Anula un pago: exige motivo y la factura vuelve a Pendiente (queda en la auditoría)
   const ejecutarAnulacion = async () => {
     if (!motivo.trim()) return setErrorAnular("El motivo es obligatorio: queda registrado en la auditoría.");
     setProcesando(true); setErrorAnular(null);
@@ -151,6 +166,7 @@ function Facturas({ esFinanzas, mostrar }) {
     finally { setProcesando(false); }
   };
 
+  // Columnas de la tabla; los botones de acción solo los ve Finanzas
   const columnas = [
     { label: "N° factura", render: (f) => <strong>{f.numeroFactura}</strong> },
     { label: "Obra", render: (f) => nombreObra(f) },
@@ -175,6 +191,7 @@ function Facturas({ esFinanzas, mostrar }) {
 
   return (
     <>
+      {/* Filtro de estado y botón para emitir factura */}
       <div className="adm-toolbar">
         <div className="adm-filters">
           <select className="adm-select" aria-label="Filtrar por estado de pago" value={estadoPago} onChange={(e) => { setPagina(0); setEstadoPago(e.target.value); }}>
@@ -186,8 +203,10 @@ function Facturas({ esFinanzas, mostrar }) {
       <Alert>{error}</Alert>
       <DataTable columnas={columnas} filas={lista(data)} cargando={cargando} vacio="No hay facturas con ese filtro." />
       <Pager data={data} pagina={pagina} setPagina={setPagina} unidad="factura(s)" />
+      {/* Ventanas: registrar pago, emitir factura y anular pago */}
       {pago && <PagoModal factura={pago} onClose={() => setPago(null)} onGuardado={(msg) => { setPago(null); mostrar(msg); cargar(); }} />}
       {emitir && <EmitirModal onClose={() => setEmitir(false)} onEmitida={() => { setEmitir(false); mostrar("Factura emitida en estado Pendiente."); cargar(); }} />}
+      {/* Ventana de confirmación de anulación */}
       {anular && (
         <ConfirmModal titulo={`Anular pago · factura ${anular.numeroFactura}`} texto="El pago no se elimina: queda marcado como anulado con tu usuario, la fecha y el motivo, y la factura vuelve a Pendiente."
           confirmar="Anular pago" peligro cargando={procesando} error={errorAnular} onCancel={() => setAnular(null)} onConfirm={ejecutarAnulacion}>
@@ -201,6 +220,7 @@ function Facturas({ esFinanzas, mostrar }) {
   );
 }
 
+// Pestaña de clientes con deuda: monto adeudado y días de atraso
 function ClientesPendientes() {
   const [filas, setFilas] = useState([]);
   const [busqueda, setBusqueda] = useState("");
@@ -213,10 +233,12 @@ function ClientesPendientes() {
     return () => { a = false; };
   }, []);
 
+  // Aplica el buscador
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLocaleLowerCase("es");
     return filas.filter((c) => !q || `${nombreCliente(c)} ${c.rut ?? c.clienteRut ?? ""}`.toLocaleLowerCase("es").includes(q));
   }, [filas, busqueda]);
+  // Suma de lo que deben los clientes mostrados
   const totalDeuda = visibles.reduce((s, c) => s + Number(pick(c, "montoAdeudado", "montoPendiente", "deuda", "monto") ?? 0), 0);
 
   const columnas = [
@@ -228,6 +250,7 @@ function ClientesPendientes() {
 
   return (
     <>
+      {/* Buscador y total adeudado */}
       <div className="adm-toolbar">
         <div className="adm-filters"><input className="adm-input" aria-label="Buscar cliente" placeholder="Buscar cliente..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} /></div>
         <strong>Total adeudado: <span style={{ color: "var(--bad)" }}>{clp(totalDeuda)}</span></strong>
@@ -238,6 +261,7 @@ function ClientesPendientes() {
   );
 }
 
+// Pantalla con dos pestañas: Facturas y Clientes con pago pendiente
 export default function CobranzasPage() {
   const esFinanzas = getRole() === "FINANZAS";
   const [tab, setTab] = useState("facturas");
@@ -245,10 +269,12 @@ export default function CobranzasPage() {
   return (
     <AppLayout title="Cobranzas" subtitle={esFinanzas ? "Emite facturas sobre obras finalizadas, registra pagos y corrige errores sin borrar historial." : "Consulta de facturas y clientes con pagos pendientes para priorizar la cobranza."}>
       <section className="adm-card">
+        {/* Pestañas */}
         <div className="adm-tabs" role="tablist">
           <button role="tab" aria-selected={tab === "facturas"} onClick={() => setTab("facturas")}>Facturas</button>
           <button role="tab" aria-selected={tab === "pendientes"} onClick={() => setTab("pendientes")}>Clientes con pagos pendientes</button>
         </div>
+        {/* Muestra la pestaña elegida */}
         {tab === "facturas" ? <Facturas esFinanzas={esFinanzas} mostrar={mostrar} /> : <ClientesPendientes />}
       </section>
       <Toast>{aviso}</Toast>
