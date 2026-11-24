@@ -1,0 +1,212 @@
+import { useCallback, useEffect, useState } from "react";
+// Un solo import desde api/obras (incluye la nueva función para asignar técnico)
+import { asignarTecnicoObra, cambiarEstadoObra, getRentabilidad } from "../../api/obras";
+import { getSeguimientoObra } from "../../api/seguimiento";
+import { getTecnicos } from "../../api/usuarios";
+import CostosForm from "../../components/CostosForm";
+import Seguimiento from "../../components/Seguimiento";
+import { Alert, ConfirmModal, EstadoPill, Kpi, Modal } from "../../components/ui";
+import { lista } from "../../lib/datos";
+import { mensajeError } from "../../lib/errores";
+import { clp, fecha, humanizar } from "../../lib/format";
+import { ESTADO_OBRA } from "../../lib/roles";
+import IncidenciasObra from "../../components/IncidenciasObra";
+import { ESTADOS_ABIERTOS } from "../../lib/incidencias";
+
+// Transiciones válidas según la máquina de estados (HU-09)
+// MÁQUINA DE ESTADOS de la obra: desde cada estado, a cuáles se puede pasar (EN_PROCESO → FINALIZADA/SUSPENDIDA/CANCELADA, etc.)
+const TRANSICIONES = { EN_PROCESO: ["FINALIZADA", "SUSPENDIDA", "CANCELADA"], SUSPENDIDA: ["EN_PROCESO", "CANCELADA"], FINALIZADA: [], CANCELADA: [] };
+
+// Hallazgo UX 2: el botón dice a qué estado pasa la obra y se pide confirmación antes de cambiar.
+// Texto claro del botón: dice a qué estado pasa la obra
+const textoBoton = (actual, destino) => (actual === "SUSPENDIDA" && destino === "EN_PROCESO" ? "Reanudar obra" : `Pasar a ${ESTADO_OBRA[destino].label}`);
+// Advertencia que se muestra antes de confirmar cada cambio de estado
+const ADVERTENCIA = {
+  FINALIZADA: "Se revisará que la obra tenga técnico asignado y costos reales (materiales y horas). Si falta algo, el sistema no la finalizará.",
+  SUSPENDIDA: "La obra quedará pausada. Debes indicar el motivo; quedará en el historial.",
+  CANCELADA: "No se puede cancelar una obra que tenga pagos asociados. Esta acción no se puede deshacer.",
+  EN_PROCESO: "La obra volverá a estar en ejecución.",
+};
+
+// Da formato a los datos de rentabilidad (porcentaje, horas o pesos)
+const formatoRentab = (clave, valor) => {
+  if (typeof valor !== "number") return String(valor);
+  if (/porcent|margen/i.test(clave)) return `${valor.toLocaleString("es-CL", { maximumFractionDigits: 1 })} %`;
+  if (/hora/i.test(clave)) return valor.toLocaleString("es-CL");
+  return clp(valor);
+};
+
+// HU-07: el supervisor elige otro técnico activo y confirma el cambio de responsable
+// Permite al Supervisor cambiar el técnico responsable de la obra
+function AsignarTecnico({ obra, onCambio }) {
+  const [tecnicos, setTecnicos] = useState([]);
+  const [tecnicoId, setTecnicoId] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Carga solo técnicos activos (el backend ya los filtra)
+  useEffect(() => {
+    let activo = true;
+    getTecnicos().then((t) => activo && setTecnicos(lista(t))).catch(() => {});
+    return () => { activo = false; };
+  }, []);
+
+  const guardar = async () => {
+    if (!tecnicoId) return setError("Elige un técnico.");
+    setGuardando(true); setError(null);
+    try {
+      await asignarTecnicoObra(obra.id, Number(tecnicoId));
+      // Avisa a la pantalla padre para que recargue la obra y muestre el mensaje
+      onCambio(`Técnico de la obra «${obra.nombre}» actualizado.`);
+    } catch (e) { setError(mensajeError(e)); }
+    finally { setGuardando(false); }
+  };
+
+  return (
+    <>
+      <Alert>{error}</Alert>
+      <div className="adm-row">
+        <select className="adm-select" aria-label="Nuevo técnico" value={tecnicoId} onChange={(e) => setTecnicoId(e.target.value)}>
+          <option value="">Elegir técnico...</option>
+          {/* No se ofrece el técnico que ya está asignado */}
+          {tecnicos.filter((t) => t.id !== obra.tecnicoId).map((t) => (
+            <option key={t.id} value={t.id}>{t.nombre} {t.apellido}</option>
+          ))}
+        </select>
+        <button className="adm-btn" onClick={guardar} disabled={guardando}>{guardando ? "Guardando..." : "Asignar"}</button>
+      </div>
+    </>
+  );
+}
+
+// Muestra si la obra dio ganancia o pérdida (presupuesto aprobado − costo real). Solo Gerencia y Finanzas
+function Rentabilidad({ obraId }) {
+  const [datos, setDatos] = useState(undefined);
+  useEffect(() => {
+    let activo = true;
+    getRentabilidad(obraId).then((d) => activo && setDatos(d)).catch(() => activo && setDatos(null));
+    return () => { activo = false; };
+  }, [obraId]);
+  if (datos === undefined) return <p className="adm-sub">Calculando rentabilidad...</p>;
+  if (!datos || typeof datos.diferencia !== "number") return <p className="adm-sub">Aún no hay costos registrados para calcular la rentabilidad.</p>;
+
+  const { diferencia, presupuestoAprobado } = datos;
+  const margen = presupuestoAprobado ? (diferencia / presupuestoAprobado) * 100 : null;
+  // Color y mensaje según la diferencia: verde = ganancia, rojo = pérdida
+  const veredicto = diferencia > 0
+    ? { tono: "ok", titulo: "▲ GANANCIA", detalle: "El costo real está por debajo del presupuesto." }
+    : diferencia < 0
+      ? { tono: "bad", titulo: "▼ PÉRDIDA", detalle: "El costo real superó el presupuesto." }
+      : { tono: "warn", titulo: "● SIN GANANCIA NI PÉRDIDA", detalle: "El costo real es igual al presupuesto." };
+  const filas = Object.entries(datos).filter(([k, v]) => typeof v === "number" && !/^id$|obraId|diferencia/i.test(k));
+
+  return (
+    <>
+      <div className="adm-kpis">
+        <Kpi tono={veredicto.tono} titulo={veredicto.titulo} valor={clp(diferencia)}
+          detalle={`${veredicto.detalle}${margen === null ? "" : ` Margen: ${margen.toLocaleString("es-CL", { maximumFractionDigits: 1 })} %`}`} />
+      </div>
+      <div className="adm-detail">
+        {filas.map(([k, v]) => <div key={k}><h3>{humanizar(k).toUpperCase()}</h3><p>{formatoRentab(k, v)}</p></div>)}
+      </div>
+    </>
+  );
+}
+
+// FICHA DE LA OBRA: ventana con todo el detalle, seguimiento, novedades, costos y botones de cambio de estado
+export default function FichaObra({ obra, rol, onClose, onCambio }) {
+  // Qué ve cada rol: el Supervisor gestiona; Gerencia y Finanzas ven rentabilidad
+  const esSupervisor = rol === "SUPERVISOR";
+  const verRentabilidad = rol === "GERENCIA" || rol === "FINANZAS";
+  // Estados: cambio de estado pendiente de confirmar, motivo, etc.
+  const [pendiente, setPendiente] = useState(null); // estado destino a confirmar
+  const [motivo, setMotivo] = useState("");
+  const [procesando, setProcesando] = useState(false);
+  const [error, setError] = useState(null);
+  const [verCostos, setVerCostos] = useState(false);
+  const [okCostos, setOkCostos] = useState(false);
+  const cargarSeguimiento = useCallback(() => getSeguimientoObra(obra.id), [obra.id]);
+
+  // Confirma el cambio de estado (la suspensión exige motivo). El backend valida el resto de reglas
+  const confirmar = async () => {
+    if (pendiente === "SUSPENDIDA" && !motivo.trim()) return setError("El motivo de la suspensión es obligatorio.");
+    setProcesando(true); setError(null);
+    try {
+      await cambiarEstadoObra(obra.id, { estado: pendiente, motivo: motivo.trim() || null });
+      onCambio(`Obra «${obra.nombre}» ahora está ${ESTADO_OBRA[pendiente].label.toLowerCase()}.`);
+    } catch (e) { setError(mensajeError(e)); }
+    finally { setProcesando(false); }
+  };
+
+  // Si hay un cambio pendiente, muestra la ventana de confirmación
+  if (pendiente) {
+    return (
+      <ConfirmModal titulo={textoBoton(obra.estado, pendiente)} texto={ADVERTENCIA[pendiente]} confirmar="Sí, confirmar" peligro={pendiente === "CANCELADA"}
+        cargando={procesando} error={error} onCancel={() => { setPendiente(null); setMotivo(""); setError(null); }} onConfirm={confirmar}>
+        {pendiente === "SUSPENDIDA" && (
+          <div className="adm-field">
+            <label htmlFor="f-motivo">Motivo de la suspensión</label>
+            <textarea id="f-motivo" className="adm-textarea" maxLength={500} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej: Falta de materiales" />
+          </div>
+        )}
+      </ConfirmModal>
+    );
+  }
+
+  // Estados a los que se puede pasar (solo si es Supervisor)
+  const destinos = esSupervisor ? TRANSICIONES[obra.estado] ?? [] : [];
+  return (
+    <Modal titulo={obra.nombre} descripcion={`${obra.clienteRazonSocial ?? ""}`} onClose={onClose} ancho="wide">
+      <p style={{ marginTop: -8 }}><EstadoPill mapa={ESTADO_OBRA} valor={obra.estado} /></p>
+      {okCostos && <Alert tipo="ok">Costos guardados.</Alert>}
+      <h3 className="adm-section">Seguimiento</h3>
+      {/* Línea de tiempo de la obra */}
+      <Seguimiento cargar={cargarSeguimiento} />
+      <h3 className="adm-section">Novedades de terreno</h3>
+{/* Novedades de terreno */}
+<IncidenciasObra obraId={obra.id} puedeRegistrar={esSupervisor && ESTADOS_ABIERTOS.includes(obra.estado)} />
+      <div className="adm-detail">
+        <div><h3>TIPO DE SERVICIO</h3><p>{obra.tipoServicioNombre ?? "—"}</p></div>
+        <div><h3>TÉCNICO ASIGNADO</h3><p>{obra.tecnicoNombre ?? "Sin asignar"}</p></div>
+        <div><h3>FECHA DE INICIO</h3><p>{fecha(obra.fechaInicio)}</p></div>
+        <div><h3>FECHA DE TÉRMINO</h3><p>{fecha(obra.fechaTermino)}</p></div>
+        <div className="wide"><h3>DESCRIPCIÓN</h3><p>{obra.descripcion || "Sin descripción."}</p></div>
+        {obra.motivoSuspension && <div className="wide"><h3>MOTIVO DE SUSPENSIÓN</h3><p>{obra.motivoSuspension}</p></div>}
+      </div>
+
+      {/* Rentabilidad: solo Gerencia y Finanzas */}
+      {verRentabilidad && <><h3 className="adm-section">Rentabilidad real</h3><Rentabilidad obraId={obra.id} /></>}
+
+      {/* Costos reales: el Supervisor los registra o revisa */}
+      {esSupervisor && obra.estado !== "CANCELADA" && (
+        <>
+          <h3 className="adm-section">Costos reales</h3>
+          {verCostos
+            ? <CostosForm obraId={obra.id} onCancel={() => setVerCostos(false)} onGuardado={() => { setVerCostos(false); setOkCostos(true); }} />
+            : <button className="adm-btn" onClick={() => { setOkCostos(false); setVerCostos(true); }}>Registrar o revisar costos</button>}
+        </>
+      )}
+
+      {/* HU-07: solo el supervisor, y solo mientras la obra no esté cerrada (el backend también lo valida) */}
+      {esSupervisor && (obra.estado === "EN_PROCESO" || obra.estado === "SUSPENDIDA") && !verCostos && (
+        <>
+          <h3 className="adm-section">Técnico responsable</h3>
+          <AsignarTecnico obra={obra} onCambio={onCambio} />
+        </>
+      )}
+
+      {/* Botones para cambiar el estado (uno por cada estado permitido) */}
+      {destinos.length > 0 && !verCostos && (
+        <>
+          <hr className="adm-sep" />
+          <div className="adm-actions">
+            {destinos.map((d) => (
+              <button key={d} className={`adm-btn ${d === "CANCELADA" ? "adm-btn-danger" : d === "FINALIZADA" ? "adm-btn-primary" : ""}`} onClick={() => setPendiente(d)}>{textoBoton(obra.estado, d)}</button>
+            ))}
+          </div>
+        </>
+      )}
+      <div className="adm-modal-actions"><button className="adm-btn" onClick={onClose}>Cerrar</button></div>
+    </Modal>
+  );
+}

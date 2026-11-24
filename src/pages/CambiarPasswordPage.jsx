@@ -3,22 +3,26 @@ import { useNavigate } from "react-router-dom";
 import { cambiarPassword, getPerfil } from "../api/usuarios";
 import { guardarPerfil, homeFor, logout } from "../api/auth";
 import { useForm } from "../hooks/useForm";
-import "./admin/admin.css";
 
+// CAMBIAR CONTRASEÑA: pantalla obligatoria en el primer ingreso (contraseña temporal) y opcional después.
 export default function CambiarPasswordPage() {
   const navigate = useNavigate();
+  // Usa el hook useForm para los campos y errores
   const { form, errors, setErrors, handleChange, resetForm } = useForm({ passwordActual: "", passwordNueva: "", confirmar: "" });
   const [error, setError] = useState(null);
   const [ok, setOk] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
+  // Sin sesión no se puede entrar a esta pantalla
   if (!localStorage.getItem("token")) {
     navigate("/login", { replace: true });
     return null;
   }
 
+  // true si el usuario tiene contraseña temporal y debe cambiarla
   const obligatorio = localStorage.getItem("debeCambiarPassword") === "true";
 
+  // Valida la nueva contraseña (8 a 72 caracteres, distinta a la actual y bien confirmada) y la envía
   const enviar = async (event) => {
     event.preventDefault();
     const e = {};
@@ -31,7 +35,9 @@ export default function CambiarPasswordPage() {
     setGuardando(true);
     setError(null);
     try {
+      // Envía al backend la contraseña actual y la nueva
       await cambiarPassword({ passwordActual: form.passwordActual, passwordNueva: form.passwordNueva });
+      // Vuelve a pedir el perfil: ya no debe cambiar contraseña, así que puede entrar al sistema
       const perfil = await getPerfil();
       guardarPerfil(perfil);
       resetForm();
@@ -44,12 +50,13 @@ export default function CambiarPasswordPage() {
     }
   };
 
+  // Permite salir sin cambiar la contraseña (cierra sesión)
   const salir = () => { logout(); navigate("/login", { replace: true }); };
 
   return (
     <main className="adm-page" style={{ display: "grid", placeItems: "center" }}>
       <form className="adm-card" style={{ width: "min(440px, 100%)" }} onSubmit={enviar} noValidate>
-        <h1 style={{ margin: "0 0 6px", fontSize: 20 }}>{obligatorio ? "Debes cambiar tu contraseña" : "Cambiar mi contraseña"}</h1>
+        <h1 style={{ margin: "0 0 6px", fontSize: "calc(20px * var(--fs, 1))" }}>{obligatorio ? "Debes cambiar tu contraseña" : "Cambiar mi contraseña"}</h1>
         <p className="adm-sub">
           {obligatorio
             ? "Tu cuenta usa una contraseña temporal. Define una nueva para continuar."

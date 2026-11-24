@@ -17,5 +17,9 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // Cargar datos al montar (useEffect -> cargar()) es el patrón usado en todo el proyecto.
+      'react-hooks/set-state-in-effect': 'off',
+    },
   },
 ])

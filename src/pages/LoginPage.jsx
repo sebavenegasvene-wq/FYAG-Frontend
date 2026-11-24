@@ -1,16 +1,32 @@
+// PÁGINA DE LOGIN: formulario de usuario y contraseña. Es la única pantalla pública.
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "../api/auth";
-import { useForm } from "../hooks/useForm";
 import "./Login.css";
+import ThemeControls from "../components/ThemeControls";
 
+// Cuentas de prueba para el 'Inicio rápido' (sirve para mostrar el sistema con cada rol)
+const CUENTAS_RAPIDAS = [
+  { rol: "Gerencia", nombre: "Camila Rojas", username: "gerencia", password: "gerencia" },
+  { rol: "Finanzas", nombre: "Paula Soto", username: "finanzas", password: "finanzas" },
+  { rol: "Supervisor", nombre: "Marcelo Fuentes", username: "supervisor", password: "supervisor" },
+  { rol: "Técnico 1", nombre: "Diego Araya", username: "tecnico1", password: "tecnico1" },
+  { rol: "Técnico 2", nombre: "Javier Mella", username: "tecnico2", password: "tecnico2" },
+  { rol: "Administrador", nombre: "Admin del sistema", username: "admin", password: "admin" },
+];
+
+// Componente de la pantalla de login
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { form, handleChange } = useForm({ username: "", password: "" });
+  // Estados: lo que escribe el usuario, errores, si está cargando y si se ve la ayuda
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [quickLogin, setQuickLogin] = useState(false);
   const [serverError, setServerError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
+  // Si la dirección trae un token (ingreso desde otro sistema), lo guarda y entra directo al dashboard
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
@@ -24,29 +40,58 @@ export default function LoginPage() {
 
     const token = getParam("token", "accessToken", "access_token");
     const refreshToken = getParam("refreshToken", "refresh_token");
-    const username = getParam("username", "user", "email");
+    const urlUsername = getParam("username", "user", "email");
 
     if (token && refreshToken) {
       localStorage.setItem("token", token);
       localStorage.setItem("refreshToken", refreshToken);
-      if (username) localStorage.setItem("username", username);
+      if (urlUsername) localStorage.setItem("username", urlUsername);
       navigate("/dashboard", { replace: true });
     }
   }, [navigate]);
 
+  // Cambia entre ingreso manual e inicio rápido (lista de roles)
+  const toggleQuickLogin = () => {
+    const nextMode = !quickLogin;
+    setQuickLogin(nextMode);
+    setServerError(null);
+
+    if (nextMode) {
+      const primeraCuenta = CUENTAS_RAPIDAS[0];
+      setUsername(primeraCuenta.username);
+      setPassword(primeraCuenta.password);
+    } else {
+      setUsername("");
+      setPassword("");
+    }
+  };
+
+  // En inicio rápido: al elegir un rol se rellenan usuario y contraseña
+  const handleRoleSelect = (event) => {
+    const selectedUsername = event.target.value;
+    const cuenta = CUENTAS_RAPIDAS.find((c) => c.username === selectedUsername);
+    if (cuenta) {
+      setUsername(cuenta.username);
+      setPassword(cuenta.password);
+    }
+  };
+
+  // Al enviar el formulario: llama al backend para iniciar sesión
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
     setServerError(null);
 
-    const submittedUsername = form.username.trim();
+    const submittedUsername = username.trim();
 
     try {
-      const perfil = await login(submittedUsername, form.password);
+      // Si es correcto guarda tokens y perfil; si tiene contraseña temporal, la obliga a cambiarla
+      const perfil = await login(submittedUsername, password);
       // Contraseña temporal: debe cambiarla antes de entrar (HU-21)
       navigate(perfil.debeCambiarPassword ? "/cambiar-password" : "/dashboard", { replace: true });
     } catch (error) {
-      if (error.response?.status === 429) setServerError("Demasiados intentos. Espera 1 minuto.");
+      // Mensajes según el error: 429 = demasiados intentos, 401 = datos incorrectos o cuenta bloqueada
+      if (error.response?.status === 429) setServerError("Demasiados intentos. Espera 15 minutos.");
       else if (error.response?.status === 401) setServerError("Usuario o contraseña incorrectos, o cuenta desactivada/bloqueada.");
       else setServerError("Error al conectar con el servidor. Intenta de nuevo.");
     } finally {
@@ -56,6 +101,8 @@ export default function LoginPage() {
 
   return (
     <main className="fyag-login">
+      {/* Controles de tema en la esquina */}
+      <div className="fyag-login-theme"><ThemeControls /></div>
       <section className="fyag-login-card" aria-labelledby="fyag-login-title">
         <button
           type="button"
@@ -67,9 +114,10 @@ export default function LoginPage() {
         >
           ?
         </button>
+        {/* Mensaje de ayuda del login (se abre con el botón ?) */}
         {showHelp && (
           <div className="fyag-help-popover" id="fyag-login-help" role="status">
-            Ingresa tu nombre de usuario y contraseña. Si no puedes acceder, contacta al administrador.
+            Ingresa tu nombre de usuario y contraseña, o usa el botón Inicio rápido para probar con un rol predefinido.
           </div>
         )}
         <div className="fyag-login-badge">FYAG</div>
@@ -77,30 +125,60 @@ export default function LoginPage() {
         <p className="fyag-login-subtitle">Gestión Centralizada de Obras y Presupuestos</p>
 
         <form onSubmit={handleSubmit}>
-          <label className="fyag-login-label" htmlFor="username">Nombre de usuario</label>
-          <input
-            id="username"
-            name="username"
-            type="text"
-            value={form.username}
-            onChange={handleChange}
-            placeholder="tu_usuario"
-            autoComplete="username"
-            required
-          />
+          <div className="fyag-login-label-row">
+            <label className="fyag-login-label" htmlFor="username">
+              {quickLogin ? "Rol" : "Nombre de usuario"}
+            </label>
+            <button
+              type="button"
+              className="fyag-quick-toggle"
+              onClick={toggleQuickLogin}
+            >
+              {quickLogin ? "Ingreso manual" : "Inicio rápido"}
+            </button>
+          </div>
+
+          {/* En inicio rápido se muestra una lista de roles; si no, un campo de texto para el usuario */}
+          {quickLogin ? (
+            <select
+              id="username"
+              name="username"
+              className="fyag-login-select"
+              value={username}
+              onChange={handleRoleSelect}
+            >
+              {CUENTAS_RAPIDAS.map((cuenta) => (
+                <option key={cuenta.username} value={cuenta.username}>
+                  {cuenta.rol} — {cuenta.nombre} ({cuenta.username})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              id="username"
+              name="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="tu_usuario"
+              autoComplete="username"
+              required
+            />
+          )}
 
           <label className="fyag-login-label" htmlFor="password">Contraseña</label>
           <input
             id="password"
             name="password"
             type="password"
-            value={form.password}
-            onChange={handleChange}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••"
             autoComplete="current-password"
             required
           />
 
+          {/* Mensaje de error del servidor */}
           {serverError && <div className="fyag-login-error" role="alert">{serverError}</div>}
 
           <button type="submit" disabled={loading}>
